@@ -18,7 +18,7 @@ Aplikasi Android berbasis **Kotlin + Jetpack Compose** untuk membantu penyandang
 ## Aturan Emas Tim (Cuma 3 Poin)
 
 1. **Jangan ngoding atau push langsung ke `main`** — branch `main` dikunci dan hanya bisa masuk lewat Pull Request (PR).
-2. **Satu orang, satu branch sendiri (`feat/<nama>-<fitur>`)** dan kerjakan di folder fitur masing-masing supaya tidak terjadi *merge conflict*.
+2. **Satu fitur, satu branch sendiri (`feat/<nama-fitur>`)** dan kerjakan di folder fitur masing-masing supaya tidak terjadi *merge conflict*.
 3. **Pastikan build hijau sebelum buka PR** — jalankan `.\gradlew.bat assembleDebug` (Windows) atau `./gradlew assembleDebug` (Mac/Linux/Git Bash).
 
 ---
@@ -84,15 +84,15 @@ Buka folder project di **Android Studio**, tunggu Gradle sync selesai, lalu cek 
 ./gradlew assembleDebug
 ```
 
-### Langkah 2: Buat branch khusus fiturmu (satu orang, satu nama branch)
-Gunakan format `feat/<nama>-<fitur>` agar dua orang di modul yang sama (misal Alif & Khansa) tidak saling menimpa branch:
+### Langkah 2: Buat branch khusus fiturmu (satu fitur, satu branch)
+Gunakan format `feat/<nama-fitur>` sesuai sub-fitur yang sedang kamu kerjakan:
 ```bash
-# Pilih sesuai tugasmu:
-git checkout -b feat/nabiel-pick-outfit
-git checkout -b feat/nabiel-history
-git checkout -b feat/zuhdi-manage-clothes
-git checkout -b feat/alif-voice-stt
-git checkout -b feat/khansa-voice-tts
+# Pilih sesuai fitur yang dikerjakan:
+git checkout -b feat/pick-outfit
+git checkout -b feat/history-rotation
+git checkout -b feat/manage-clothes
+git checkout -b feat/voice-stt
+git checkout -b feat/voice-tts
 ```
 
 ### Langkah 3: Simpan & push kodingan ke branch kamu
@@ -102,13 +102,13 @@ git add .
 git commit -m "feat: deskripsi singkat apa yang dikerjakan"
 git push -u origin NAMA-BRANCH-KAMU
 ```
-*(Contoh: `git push -u origin feat/nabiel-pick-outfit`. Untuk push berikutnya di branch yang sama, cukup ketik `git push`.)*
+*(Contoh: `git push -u origin feat/pick-outfit`. Untuk push berikutnya di branch yang sama, cukup ketik `git push`.)*
 
-### Langkah 4: Buka Pull Request (PR) di GitHub
+### Langkah 4: Buka Pull Request (PR) & Langsung Merge Sendiri
 1. Buka halaman repository di GitHub — klik tombol kuning **"Compare & pull request"** untuk branch yang baru di-push.
 2. Isi checklist singkat di template PR, lalu klik **Create pull request**.
-3. Tunggu pengecekan **Android CI** selesai otomatis (tanda centang hijau).
-4. Setelah hijau, klik **Squash and merge** -> **Confirm squash and merge** -> **Delete branch**.
+3. Tunggu pengecekan otomatis **Android CI** selesai (~2–3 menit sampai muncul tanda centang hijau).
+4. **Tidak perlu menunggu review/ACC teman lain!** Begitu **Android CI** centang hijau, kamu bisa **langsung klik `Squash and merge` sendiri** -> **Confirm squash and merge** -> **Delete branch**.
 
 > **PENTING (Wajib Baca):** Setelah PR di-**Squash and merge**, branch lama tersebut dianggap **sudah selesai dan mati**. **JANGAN lanjut ngoding atau push lagi dari branch lama** karena akan memicu konflik ganda! Selalu kembali ke `main` dan buat branch baru (lihat Langkah 5).
 
@@ -117,7 +117,7 @@ Setiap kali mau mulai tugas baru setelah ada PR yang masuk ke `main`:
 ```bash
 git checkout main
 git pull origin main
-git checkout -b feat/nama-tugas-baru
+git checkout -b feat/nama-fitur-baru
 ```
 *(Jika kamu masih mengerjakan branch yang **belum di-merge** dan butuh update terbaru teman dari `main`, jalankan `git pull origin main` dari dalam branch kamu.)*
 
@@ -125,10 +125,10 @@ git checkout -b feat/nama-tugas-baru
 
 ## Alternatif Tanpa Ketik Terminal (Pakai Tombol Android Studio)
 
-1. **Buat branch baru:** Klik nama branch `main` di pojok kiri atas / kanan bawah Android Studio -> **New Branch...** -> tulis nama branch (misal `feat/nabiel-pick-outfit`).
+1. **Buat branch baru:** Klik nama branch `main` di pojok kiri atas / kanan bawah Android Studio -> **New Branch...** -> tulis nama branch (misal `feat/pick-outfit`).
 2. **Commit & Push:** Tekan `Ctrl + K` (Windows) atau `Cmd + K` (Mac) -> centang file yang diubah -> tulis pesan commit -> klik panah kecil di tombol **Commit** lalu pilih **Commit and Push...**.
 3. **Ambil update teman:** Klik menu **Git** -> **Update Project** (atau tekan `Ctrl + T` / `Cmd + T`).
-4. Setelah push, buka GitHub di browser -> klik **Compare & pull request** -> **Squash and merge**.
+4. Setelah push, buka GitHub di browser -> klik **Compare & pull request** -> tunggu **Android CI** hijau -> langsung **Squash and merge** sendiri (tanpa perlu tunggu ACC teman).
 
 ---
 
