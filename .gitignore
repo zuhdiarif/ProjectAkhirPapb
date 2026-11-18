@@ -1,0 +1,26 @@
+*.iml
+.gradle
+/local.properties
+/.idea/caches
+/.idea/libraries
+/.idea/modules.xml
+/.idea/workspace.xml
+/.idea/navEditor.xml
+/.idea/assetWizardSettings.xml
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+local.properties
+
+# AI & Internal Planning Docs (keep only README.md)
+*.md
+!README.md
+.agents/
+.agent/
+.claude/
+.cursor/
+.ai/
+.env
+.env.*
