@@ -17,6 +17,8 @@ local.properties
 # AI & Internal Planning Docs (keep only README.md)
 *.md
 !README.md
+!.github/
+!.github/**/*.md
 .agents/
 .agent/
 .claude/
