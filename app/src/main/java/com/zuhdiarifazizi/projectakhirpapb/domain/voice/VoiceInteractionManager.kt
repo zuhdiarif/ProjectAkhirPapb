@@ -100,6 +100,7 @@ class VoiceInteractionManager(
         _state.update {
             it.copy(
                 status = VoiceSessionStatus.PROCESSING,
+                isListening = false,
                 lastTranscript = spokenText
             )
         }
