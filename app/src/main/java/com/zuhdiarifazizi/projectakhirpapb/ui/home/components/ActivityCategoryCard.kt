@@ -51,15 +51,14 @@ fun ActivityCategoryCard(
     onSelect: (ActivityCategory) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val accessibilityLabel = buildString {
+    val accessibilityDescription = buildString {
         append(category.title)
         append(". ")
         append(category.description)
-        append(". ")
+        append(".")
         if (isSelected) {
-            append("Sedang dipilih. ")
+            append(" Sedang dipilih.")
         }
-        append("Tombol. Ketuk dua kali untuk memilih.")
     }
 
     Card(
@@ -67,12 +66,12 @@ fun ActivityCategoryCard(
             .fillMaxWidth()
             .defaultMinSize(minHeight = 72.dp)
             .semantics(mergeDescendants = true) {
-                contentDescription = accessibilityLabel
+                contentDescription = accessibilityDescription
                 role = Role.Button
                 selected = isSelected
             }
             .clickable(
-                onClickLabel = "Pilih kategori ${category.title}",
+                onClickLabel = "memilih kategori ${category.title}",
                 role = Role.Button,
                 onClick = { onSelect(category) }
             ),

@@ -39,9 +39,9 @@ fun VoiceActionButton(
 ) {
     val buttonLabel = if (isListening) "Mendengarkan..." else "Gunakan perintah suara"
     val accessibilityDescription = if (isListening) {
-        "Sedang mendengarkan perintah suara. Tombol. Ketuk untuk menghentikan."
+        "Sedang mendengarkan perintah suara"
     } else {
-        "Gunakan perintah suara. Tombol. Ketuk dua kali untuk mulai berbicara."
+        "Gunakan perintah suara"
     }
 
     val backgroundColor = if (isListening) AuraListeningRed else AuraNavy
@@ -57,7 +57,7 @@ fun VoiceActionButton(
                 role = Role.Button
             }
             .clickable(
-                onClickLabel = if (isListening) "Hentikan mendengarkan" else "Mulai perintah suara",
+                onClickLabel = if (isListening) "hentikan mendengarkan" else "mulai berbicara",
                 role = Role.Button,
                 onClick = onClick
             )
