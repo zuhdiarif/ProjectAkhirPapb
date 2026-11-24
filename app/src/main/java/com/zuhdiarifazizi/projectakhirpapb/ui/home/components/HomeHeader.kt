@@ -70,7 +70,7 @@ fun HomeHeader(
             modifier = Modifier
                 .size(48.dp)
                 .semantics {
-                    contentDescription = "Profil pengguna. Tombol. Ketuk dua kali untuk membuka profil."
+                    contentDescription = "Profil pengguna"
                     role = Role.Button
                 }
         ) {
