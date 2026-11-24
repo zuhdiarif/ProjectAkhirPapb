@@ -1,9 +1,13 @@
 package com.zuhdiarifazizi.projectakhirpapb
 
+import android.Manifest
+import android.content.pm.PackageManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -12,14 +16,19 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zuhdiarifazizi.projectakhirpapb.data.classifier.DefaultClothingClassifier
+import com.zuhdiarifazizi.projectakhirpapb.data.feedback.AndroidHapticFeedbackManager
+import com.zuhdiarifazizi.projectakhirpapb.data.feedback.AndroidTextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.DefaultActivityCategoryRepository
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.InMemoryAuthRepository
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.InMemoryClothesRepository
@@ -54,11 +63,22 @@ class MainActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuraAppShell() {
+    val context = LocalContext.current
+
     val authRepository = remember { InMemoryAuthRepository() }
     val clothesRepository = remember { InMemoryClothesRepository() }
     val outfitRepository = remember { InMemoryOutfitRepository() }
     val classifier = remember { DefaultClothingClassifier() }
     val categoryRepository = remember { DefaultActivityCategoryRepository() }
+
+    val ttsManager = remember { AndroidTextToSpeechManager(context) }
+    val hapticManager = remember { AndroidHapticFeedbackManager(context) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            ttsManager.shutdown()
+        }
+    }
 
     val authViewModel: AuthViewModel = viewModel { AuthViewModel(authRepository) }
     val manageViewModel: ManageClothesViewModel = viewModel {
@@ -71,7 +91,13 @@ fun AuraAppShell() {
         HistoryViewModel(clothesRepository, outfitRepository)
     }
     val voiceViewModel: VoiceViewModel = viewModel { VoiceViewModel() }
-    val homeViewModel: HomeViewModel = viewModel { HomeViewModel(categoryRepository) }
+    val homeViewModel: HomeViewModel = viewModel {
+        HomeViewModel(
+            activityCategoryRepository = categoryRepository,
+            ttsManager = ttsManager,
+            hapticManager = hapticManager
+        )
+    }
 
     val manageState by manageViewModel.uiState.collectAsState()
     val pickState by pickOutfitViewModel.uiState.collectAsState()
@@ -79,6 +105,18 @@ fun AuraAppShell() {
     val homeState by homeViewModel.uiState.collectAsState()
 
     var currentDestination by remember { mutableStateOf(AuraDestination.AUTH) }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            homeViewModel.onVoiceActionClicked(hasRecordAudioPermission = true) {
+                // STT start hook for Phase 2
+            }
+        } else {
+            homeViewModel.onVoiceActionClicked(hasRecordAudioPermission = false) {}
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
@@ -114,11 +152,29 @@ fun AuraAppShell() {
             AuraDestination.HOME -> HomeScreen(
                 uiState = homeState,
                 onCategoryClick = { category ->
-                    homeViewModel.selectCategory(category)
-                    currentDestination = AuraDestination.PICK_OUTFIT
+                    homeViewModel.selectCategory(category) {
+                        currentDestination = AuraDestination.PICK_OUTFIT
+                    }
                 },
                 onVoiceButtonClick = {
-                    homeViewModel.setVoiceListening(!homeState.isVoiceListening)
+                    val hasPermission = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.RECORD_AUDIO
+                    ) == PackageManager.PERMISSION_GRANTED
+
+                    if (hasPermission) {
+                        homeViewModel.onVoiceActionClicked(hasRecordAudioPermission = true) {
+                            // STT start hook for Phase 2
+                        }
+                    } else {
+                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
+                },
+                onRepeatGuidance = {
+                    homeViewModel.repeatGuidance()
+                },
+                onDismissBanner = {
+                    homeViewModel.dismissFeedbackBanner()
                 },
                 modifier = screenModifier
             )
