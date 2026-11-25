@@ -20,7 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,7 +34,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.zuhdiarifazizi.projectakhirpapb.R
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ActivityCategory
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.FeedbackBanner
@@ -47,6 +45,7 @@ import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraBackground
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraCardBorder
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraNavy
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraSurface
+import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraHelperTextStyle
 
 @Composable
 fun HomeScreen(
@@ -70,7 +69,7 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp, vertical = 16.dp)
+                .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
             // Header
             HomeHeader(
@@ -92,7 +91,7 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Heading section
             HomeHeading()
@@ -121,7 +120,7 @@ fun HomeScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                        .padding(horizontal = 14.dp, vertical = 9.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
@@ -133,16 +132,15 @@ fun HomeScreen(
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = "Dengarkan Panduan Halaman",
-                        style = MaterialTheme.typography.bodyMedium.copy(
+                        style = AuraHelperTextStyle.copy(
                             fontWeight = FontWeight.SemiBold,
-                            color = AuraNavy,
-                            fontSize = 13.sp
+                            color = AuraNavy
                         )
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(18.dp))
+            Spacer(modifier = Modifier.height(14.dp))
 
             // Voice Interaction Button (Prominent, High Accessibility)
             VoiceActionButton(
@@ -151,11 +149,11 @@ fun HomeScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
 
             // 5 Category Cards
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 uiState.categories.forEach { category ->
@@ -168,7 +166,7 @@ fun HomeScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(12.dp))
         }
     }
 }

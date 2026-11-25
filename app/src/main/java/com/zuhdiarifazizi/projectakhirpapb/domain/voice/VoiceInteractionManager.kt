@@ -14,6 +14,10 @@ interface VoiceNavigationCallback {
     fun onSelectOccasion(occasion: Occasion)
     fun onOpenHistory()
     fun onOpenWardrobe()
+    fun onListenRecommendations() {}
+    fun onSelectFirstRecommendation() {}
+    fun onAddClothing() {}
+    fun onOpenClothingCamera() {}
 }
 
 class VoiceInteractionManager(
@@ -197,6 +201,46 @@ class VoiceInteractionManager(
                 _state.update {
                     it.copy(status = VoiceSessionStatus.SUCCESS)
                 }
+            }
+            is VoiceCommand.ListenRecommendations -> {
+                hapticManager.performSuccess()
+                _state.update {
+                    it.copy(
+                        status = VoiceSessionStatus.SUCCESS,
+                        feedbackMessage = "Membacakan rekomendasi pakaian"
+                    )
+                }
+                if (navigationCallback != null) {
+                    navigationCallback.onListenRecommendations()
+                } else {
+                    ttsManager.speak("Buka halaman rekomendasi pakaian untuk mendengarkan rekomendasi.")
+                }
+            }
+            is VoiceCommand.SelectFirstRecommendation -> {
+                hapticManager.performSuccess()
+                _state.update {
+                    it.copy(
+                        status = VoiceSessionStatus.SUCCESS,
+                        feedbackMessage = "Memilih rekomendasi pertama"
+                    )
+                }
+                if (navigationCallback != null) {
+                    navigationCallback.onSelectFirstRecommendation()
+                } else {
+                    ttsManager.speak("Buka halaman rekomendasi pakaian untuk memilih rekomendasi pertama.")
+                }
+            }
+            is VoiceCommand.AddClothing -> {
+                hapticManager.performSuccess()
+                _state.update { it.copy(status = VoiceSessionStatus.SUCCESS, feedbackMessage = "Membuka form tambah pakaian") }
+                if (navigationCallback != null) navigationCallback.onAddClothing()
+                else ttsManager.speak("Buka halaman Kelola Pakaian untuk menambahkan baju.")
+            }
+            is VoiceCommand.OpenClothingCamera -> {
+                hapticManager.performSuccess()
+                _state.update { it.copy(status = VoiceSessionStatus.SUCCESS, feedbackMessage = "Membuka kamera pakaian") }
+                if (navigationCallback != null) navigationCallback.onOpenClothingCamera()
+                else ttsManager.speak("Buka form tambah pakaian untuk menggunakan kamera.")
             }
             is VoiceCommand.CancelAction -> {
                 cancelListening()

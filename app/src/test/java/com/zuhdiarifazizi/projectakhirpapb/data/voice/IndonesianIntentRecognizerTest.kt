@@ -139,6 +139,23 @@ class IndonesianIntentRecognizerTest {
     }
 
     @Test
+    fun recognize_recommendationCommands() {
+        assertTrue(recognizer.recognize("Dengarkan rekomendasi").let {
+            it is VoiceCommand.ListenRecommendations
+        })
+        assertTrue(recognizer.recognize("Pilih rekomendasi pertama").let {
+            it is VoiceCommand.SelectFirstRecommendation
+        })
+    }
+
+    @Test
+    fun recognize_clothingManagementCommands() {
+        assertTrue(recognizer.recognize("Tambahkan pakaian").let { it is VoiceCommand.AddClothing })
+        assertTrue(recognizer.recognize("Buka kamera pakaian").let { it is VoiceCommand.OpenClothingCamera })
+        assertTrue(recognizer.recognize("Ambil foto baju").let { it is VoiceCommand.OpenClothingCamera })
+    }
+
+    @Test
     fun recognize_cancelIntentVariations() {
         val variations = listOf(
             "Batalkan.",
