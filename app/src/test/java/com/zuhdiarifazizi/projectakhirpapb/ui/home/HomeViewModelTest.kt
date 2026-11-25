@@ -131,4 +131,42 @@ class HomeViewModelTest {
         assertNull(viewModel.uiState.value.feedbackBanner)
         assertTrue(fakeHaptic.buttonClickCount > 0)
     }
+
+    @Test
+    fun homeViewModel_withVoiceInteractionManager_triggersVoiceWorkflow() {
+        val fakeStt = com.zuhdiarifazizi.projectakhirpapb.domain.voice.FakeSpeechRecognizerManager()
+        val intentRecognizer = com.zuhdiarifazizi.projectakhirpapb.data.voice.IndonesianIntentRecognizer()
+        val voiceManager = com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceInteractionManager(
+            speechRecognizerManager = fakeStt,
+            intentRecognizer = intentRecognizer,
+            ttsManager = fakeTts,
+            hapticManager = fakeHaptic
+        )
+
+        val vmWithVoice = HomeViewModel(
+            activityCategoryRepository = DefaultActivityCategoryRepository(),
+            ttsManager = fakeTts,
+            hapticManager = fakeHaptic,
+            voiceInteractionManager = voiceManager,
+            externalScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Unconfined)
+        )
+
+        var selectedOccasion: Occasion? = null
+        val callback = object : com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) {
+                selectedOccasion = occasion
+            }
+            override fun onOpenHistory() {}
+            override fun onOpenWardrobe() {}
+        }
+
+        vmWithVoice.onVoiceActionClicked(hasRecordAudioPermission = true, navigationCallback = callback)
+        assertTrue(vmWithVoice.uiState.value.isVoiceListening)
+
+        // STT emits user utterance
+        fakeStt.emitResult("Mau pergi kerja kantor")
+
+        assertEquals(Occasion.WORK, selectedOccasion)
+        assertFalse(vmWithVoice.uiState.value.isVoiceListening)
+    }
 }
