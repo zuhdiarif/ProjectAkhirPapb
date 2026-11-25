@@ -33,6 +33,11 @@ import com.zuhdiarifazizi.projectakhirpapb.data.repository.DefaultActivityCatego
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.InMemoryAuthRepository
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.InMemoryClothesRepository
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.InMemoryOutfitRepository
+import com.zuhdiarifazizi.projectakhirpapb.data.voice.AndroidSpeechRecognizerManager
+import com.zuhdiarifazizi.projectakhirpapb.data.voice.IndonesianIntentRecognizer
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
+import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceInteractionManager
+import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceNavigationCallback
 import com.zuhdiarifazizi.projectakhirpapb.ui.auth.AuthScreen
 import com.zuhdiarifazizi.projectakhirpapb.ui.auth.AuthViewModel
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraBottomNavigation
@@ -73,10 +78,20 @@ fun AuraAppShell() {
 
     val ttsManager = remember { AndroidTextToSpeechManager(context) }
     val hapticManager = remember { AndroidHapticFeedbackManager(context) }
+    val speechRecognizerManager = remember { AndroidSpeechRecognizerManager(context) }
+    val intentRecognizer = remember { IndonesianIntentRecognizer() }
+    val voiceInteractionManager = remember {
+        VoiceInteractionManager(
+            speechRecognizerManager = speechRecognizerManager,
+            intentRecognizer = intentRecognizer,
+            ttsManager = ttsManager,
+            hapticManager = hapticManager
+        )
+    }
 
     DisposableEffect(Unit) {
         onDispose {
-            ttsManager.shutdown()
+            voiceInteractionManager.cleanup()
         }
     }
 
@@ -95,7 +110,8 @@ fun AuraAppShell() {
         HomeViewModel(
             activityCategoryRepository = categoryRepository,
             ttsManager = ttsManager,
-            hapticManager = hapticManager
+            hapticManager = hapticManager,
+            voiceInteractionManager = voiceInteractionManager
         )
     }
 
@@ -106,16 +122,30 @@ fun AuraAppShell() {
 
     var currentDestination by remember { mutableStateOf(AuraDestination.AUTH) }
 
+    val voiceNavigationCallback = remember {
+        object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) {
+                homeViewModel.selectCategoryByOccasion(occasion)
+                currentDestination = AuraDestination.PICK_OUTFIT
+            }
+
+            override fun onOpenHistory() {
+                currentDestination = AuraDestination.HISTORY
+            }
+
+            override fun onOpenWardrobe() {
+                currentDestination = AuraDestination.MANAGE_CLOTHES
+            }
+        }
+    }
+
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (isGranted) {
-            homeViewModel.onVoiceActionClicked(hasRecordAudioPermission = true) {
-                // STT start hook for Phase 2
-            }
-        } else {
-            homeViewModel.onVoiceActionClicked(hasRecordAudioPermission = false) {}
-        }
+        homeViewModel.onVoiceActionClicked(
+            hasRecordAudioPermission = isGranted,
+            navigationCallback = voiceNavigationCallback
+        )
     }
 
     Scaffold(
@@ -163,9 +193,10 @@ fun AuraAppShell() {
                     ) == PackageManager.PERMISSION_GRANTED
 
                     if (hasPermission) {
-                        homeViewModel.onVoiceActionClicked(hasRecordAudioPermission = true) {
-                            // STT start hook for Phase 2
-                        }
+                        homeViewModel.onVoiceActionClicked(
+                            hasRecordAudioPermission = true,
+                            navigationCallback = voiceNavigationCallback
+                        )
                     } else {
                         permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     }
