@@ -64,7 +64,7 @@ fun ActivityCategoryCard(
     Card(
         modifier = modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 72.dp)
+            .defaultMinSize(minHeight = 68.dp)
             .semantics(mergeDescendants = true) {
                 contentDescription = accessibilityDescription
                 role = Role.Button
@@ -75,7 +75,7 @@ fun ActivityCategoryCard(
                 role = Role.Button,
                 onClick = { onSelect(category) }
             ),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(
             containerColor = if (isSelected) AuraCardSelectedBg else AuraSurface
         ),
@@ -88,13 +88,13 @@ fun ActivityCategoryCard(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Icon Container
             Box(
                 modifier = Modifier
-                    .size(48.dp)
+                    .size(44.dp)
                     .clip(RoundedCornerShape(12.dp))
                     .background(AuraIconContainerBg),
                 contentAlignment = Alignment.Center
@@ -107,7 +107,7 @@ fun ActivityCategoryCard(
                 )
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             // Title and Description
             Column(
@@ -125,7 +125,7 @@ fun ActivityCategoryCard(
                     text = category.description,
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = AuraTextSecondary,
-                        fontSize = 13.sp
+                        fontSize = 14.sp
                     )
                 )
             }

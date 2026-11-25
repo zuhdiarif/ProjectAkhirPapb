@@ -148,6 +148,22 @@ class VoiceInteractionManagerTest {
     }
 
     @Test
+    fun processRecognizedSpeech_addClothingUsesExistingNavigationCallback() {
+        var formOpened = false
+        val callback = object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) {}
+            override fun onOpenHistory() {}
+            override fun onOpenWardrobe() {}
+            override fun onAddClothing() { formOpened = true }
+        }
+
+        voiceManager.processRecognizedSpeech("Tambahkan pakaian", callback)
+
+        assertTrue(formOpened)
+        assertEquals(1, fakeHaptic.successCount)
+    }
+
+    @Test
     fun processRecognizedSpeech_cancelAction_stopsListening() {
         voiceManager.processRecognizedSpeech("Batalkan aksi", null)
 
