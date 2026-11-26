@@ -27,6 +27,7 @@ import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraCard
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraPrimaryButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraSecondaryButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.ClothingImage
+import com.zuhdiarifazizi.projectakhirpapb.ui.home.components.VoiceActionButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraIndigoSoft
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraNavyDeep
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraShapes
@@ -41,6 +42,9 @@ fun RfidScanScreen(
     matchedItem: ClothingItem?,
     matchedScore: Double?,
     statusMessage: String?,
+    isVoiceListening: Boolean = false,
+    partialTranscript: String = "",
+    onVoiceClick: () -> Unit = {},
     onBack: () -> Unit,
     onRecognizeWithCamera: () -> Unit,
     onRecognizeWithGallery: () -> Unit,
@@ -62,6 +66,12 @@ fun RfidScanScreen(
             text = "Pindai RFID / Kenali Baju",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.semantics { heading() }
+        )
+
+        VoiceActionButton(
+            isListening = isVoiceListening,
+            onClick = onVoiceClick,
+            partialTranscript = partialTranscript
         )
 
         Surface(

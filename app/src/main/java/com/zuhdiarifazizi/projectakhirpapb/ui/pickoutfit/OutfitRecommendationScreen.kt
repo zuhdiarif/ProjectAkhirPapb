@@ -39,6 +39,7 @@ fun OutfitRecommendationScreen(
     candidates: List<OutfitCandidate>,
     currentCandidateIndex: Int,
     isVoiceListening: Boolean,
+    partialTranscript: String = "",
     onBack: () -> Unit,
     onVoiceClick: () -> Unit,
     onSpeak: (Int) -> Unit,
@@ -75,7 +76,11 @@ fun OutfitRecommendationScreen(
                 color = AuraTextSecondary
             )
             Spacer(Modifier.height(AuraSpacing.xs))
-            VoiceActionButton(isListening = isVoiceListening, onClick = onVoiceClick)
+            VoiceActionButton(
+                isListening = isVoiceListening,
+                onClick = onVoiceClick,
+                partialTranscript = partialTranscript
+            )
             Spacer(Modifier.height(AuraSpacing.xs))
             statusMessage?.let { message ->
                 Text(

@@ -78,6 +78,7 @@ import com.zuhdiarifazizi.projectakhirpapb.ui.components.LocalClothingPhoto
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraHighContrastInk
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraIndigoSoft
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraIndigoWash
+import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraListeningRed
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraNavyDeep
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraSpacing
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraSuccessGreen
@@ -92,6 +93,8 @@ fun ClothingCameraScreen(
     hud: ScannerHudState,
     captureRequestId: Int,
     capturedPhotoUri: String?,
+    isVoiceListening: Boolean = false,
+    onVoiceClick: () -> Unit = {},
     onBack: () -> Unit,
     onOpenGallery: () -> Unit,
     onToggleTorch: () -> Unit,
@@ -237,6 +240,8 @@ fun ClothingCameraScreen(
     ) {
         ScannerTopHeader(
             title = if (hud.isFindMode) "Kenali Baju via Kamera" else "Tambah Baju Baru",
+            isVoiceListening = isVoiceListening,
+            onVoiceClick = onVoiceClick,
             onBack = onBack,
             onSpeakInstruction = onSpeakInstruction
         )
@@ -341,6 +346,8 @@ fun ClothingCameraScreen(
 @Composable
 private fun ScannerTopHeader(
     title: String,
+    isVoiceListening: Boolean,
+    onVoiceClick: () -> Unit,
     onBack: () -> Unit,
     onSpeakInstruction: () -> Unit
 ) {
@@ -353,7 +360,10 @@ private fun ScannerTopHeader(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.weight(1f)
+            ) {
                 IconButton(
                     onClick = onBack,
                     modifier = Modifier
@@ -371,24 +381,51 @@ private fun ScannerTopHeader(
                     text = title,
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp,
+                        fontSize = 18.sp,
                         color = AuraHighContrastInk
                     ),
                     modifier = Modifier.semantics { heading() }
                 )
             }
-            IconButton(
-                onClick = onSpeakInstruction,
-                modifier = Modifier
-                    .size(48.dp)
-                    .semantics { contentDescription = "Ulangi panduan suara pemindai" }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_volume_up),
-                    contentDescription = null,
-                    tint = AuraNavyDeep,
-                    modifier = Modifier.size(22.dp)
-                )
+                IconButton(
+                    onClick = onVoiceClick,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(CircleShape)
+                        .background(if (isVoiceListening) AuraListeningRed else AuraIndigoSoft)
+                        .semantics {
+                            contentDescription = if (isVoiceListening) {
+                                "Hentikan perintah suara kamera"
+                            } else {
+                                "Gunakan perintah suara kamera, misalnya ucapkan ambil foto"
+                            }
+                            role = Role.Button
+                        }
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_mic),
+                        contentDescription = null,
+                        tint = if (isVoiceListening) Color.White else AuraNavyDeep,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+                IconButton(
+                    onClick = onSpeakInstruction,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .semantics { contentDescription = "Ulangi panduan suara pemindai" }
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_volume_up),
+                        contentDescription = null,
+                        tint = AuraNavyDeep,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
         }
     }
