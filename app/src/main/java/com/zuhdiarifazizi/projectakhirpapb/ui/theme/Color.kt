@@ -2,26 +2,34 @@ package com.zuhdiarifazizi.projectakhirpapb.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Purple80 = Color(0xFFD0BCFF)
-val PurpleGrey80 = Color(0xFFCCC2DC)
-val Pink80 = Color(0xFFEFB8C8)
+// AURA palette from the supplied UI reference.
+val AuraNavy = Color(0xFF0B2A7A)
+val AuraBackground = Color(0xFFFFFFFF)
+val AuraTextPrimary = Color(0xFF1A1A1A)
+val AuraTextSecondary = Color(0xFF4D4D4D)
+val AuraErrorRed = Color(0xFFB00020)
 
-val Purple40 = Color(0xFF6650a4)
-val PurpleGrey40 = Color(0xFF625b71)
-val Pink40 = Color(0xFF7D5260)
+// Supporting component colors, derived from the reference palette.
+val AuraSurface = AuraBackground
+val AuraNavyLight = Color(0xFF24458D)
+val AuraBlueAccent = AuraNavy
+val AuraCardBorder = Color(0xFFBDBDBD)
+val AuraCardBorderSelected = AuraNavy
+val AuraCardSelectedBg = Color(0xFFF2F5FC)
+val AuraTextMuted = Color(0xFF757575)
+val AuraIconContainerBg = Color(0xFFF5F5F5)
+val AuraListeningRed = AuraErrorRed
+val AuraSuccessGreen = Color(0xFF2E7D32)
 
-// Aura Design System Colors
-val AuraNavy = Color(0xFF0F1E36)
-val AuraNavyLight = Color(0xFF1E3A5F)
-val AuraBlueAccent = Color(0xFF2563EB)
-val AuraBackground = Color(0xFFF8FAFC)
-val AuraSurface = Color(0xFFFFFFFF)
-val AuraCardBorder = Color(0xFFCBD5E1)
-val AuraCardBorderSelected = Color(0xFF0F1E36)
-val AuraCardSelectedBg = Color(0xFFF0F4F8)
-val AuraTextPrimary = Color(0xFF0F1E36)
-val AuraTextSecondary = Color(0xFF5A6B82)
-val AuraTextMuted = Color(0xFF94A3B8)
-val AuraIconContainerBg = Color(0xFFF1F5F9)
-val AuraListeningRed = Color(0xFFDC2626)
-val AuraSuccessGreen = Color(0xFF16A34A)
+// Figma Design System tokens (Kelola Baju & Scanner Live HUD)
+val AuraNavyDeep = Color(0xFF001E5A)
+val AuraSurfaceTint = Color(0xFFFAF8FF)
+val AuraWarmSurface = Color(0xFFFCF9F8)
+val AuraIndigoSoft = Color(0xFFE2E7FF)
+val AuraIndigoWash = Color(0xFFEAEDFF)
+val AuraIndigoCard = Color(0xFFDADFFF)
+val AuraTipCardBg = Color(0xFFDAE2FF)
+val AuraTipIconBg = Color(0xFF435C9B)
+val AuraTipText = Color(0xFF2A4482)
+val AuraHighContrastInk = Color(0xFF1C1B1B)
+val AuraHintBannerBg = Color(0xFFF0EDED)

@@ -14,6 +14,11 @@ enum class VoiceIntentType {
     OPEN_WARDROBE,
     REPEAT_RESPONSE,
     CANCEL_ACTION,
+    LISTEN_RECOMMENDATIONS,
+    SELECT_FIRST_RECOMMENDATION,
+    ADD_CLOTHING,
+    OPEN_CLOTHING_CAMERA,
+    SCAN_RFID,
     UNKNOWN
 }
 
@@ -27,6 +32,11 @@ sealed class VoiceCommand(val type: VoiceIntentType) {
     data object OpenWardrobe : VoiceCommand(VoiceIntentType.OPEN_WARDROBE)
     data object RepeatResponse : VoiceCommand(VoiceIntentType.REPEAT_RESPONSE)
     data object CancelAction : VoiceCommand(VoiceIntentType.CANCEL_ACTION)
+    data object ListenRecommendations : VoiceCommand(VoiceIntentType.LISTEN_RECOMMENDATIONS)
+    data object SelectFirstRecommendation : VoiceCommand(VoiceIntentType.SELECT_FIRST_RECOMMENDATION)
+    data object AddClothing : VoiceCommand(VoiceIntentType.ADD_CLOTHING)
+    data object OpenClothingCamera : VoiceCommand(VoiceIntentType.OPEN_CLOTHING_CAMERA)
+    data object ScanRfid : VoiceCommand(VoiceIntentType.SCAN_RFID)
     data class Unknown(val rawText: String) : VoiceCommand(VoiceIntentType.UNKNOWN)
 
     fun toLegacyVoiceIntent(): VoiceIntent {
@@ -40,6 +50,11 @@ sealed class VoiceCommand(val type: VoiceIntentType) {
             is OpenWardrobe -> VoiceIntent.Navigate(VoiceDestination.MANAGE_CLOTHES)
             is RepeatResponse -> VoiceIntent.ReadScreen
             is CancelAction -> VoiceIntent.GoBack
+            is ListenRecommendations -> VoiceIntent.Navigate(VoiceDestination.PICK_OUTFIT)
+            is SelectFirstRecommendation -> VoiceIntent.Navigate(VoiceDestination.PICK_OUTFIT)
+            is AddClothing -> VoiceIntent.AddNewClothing
+            is OpenClothingCamera -> VoiceIntent.Navigate(VoiceDestination.MANAGE_CLOTHES)
+            is ScanRfid -> VoiceIntent.Navigate(VoiceDestination.MANAGE_CLOTHES)
             is Unknown -> VoiceIntent.Unknown(rawText)
         }
     }

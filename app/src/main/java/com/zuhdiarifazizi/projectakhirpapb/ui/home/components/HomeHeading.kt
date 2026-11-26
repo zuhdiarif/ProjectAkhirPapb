@@ -10,9 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraNavy
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraTextSecondary
 
@@ -31,19 +29,12 @@ fun HomeHeading(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontWeight = FontWeight.Bold,
-                color = AuraNavy,
-                fontSize = 24.sp
-            )
+            style = MaterialTheme.typography.headlineSmall.copy(color = AuraNavy)
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = subtitle,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                color = AuraTextSecondary,
-                fontSize = 15.sp
-            )
+            style = MaterialTheme.typography.bodyMedium.copy(color = AuraTextSecondary)
         )
     }
 }

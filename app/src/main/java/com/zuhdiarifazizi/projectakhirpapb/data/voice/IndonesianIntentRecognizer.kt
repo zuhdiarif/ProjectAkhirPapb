@@ -14,6 +14,26 @@ class IndonesianIntentRecognizer : IntentRecognizer {
         "panduan lagi", "jelaskan lagi", "ulangi suara", "ulangi perintah"
     )
 
+    private val listenRecommendationKeywords = listOf(
+        "dengarkan rekomendasi", "bacakan rekomendasi", "baca rekomendasi", "jelaskan rekomendasi"
+    )
+
+    private val selectFirstRecommendationKeywords = listOf(
+        "pilih rekomendasi pertama", "pilih rekomendasi nomor satu", "ambil rekomendasi pertama", "gunakan rekomendasi pertama"
+    )
+
+    private val addClothingKeywords = listOf(
+        "tambahkan pakaian", "tambah pakaian", "tambahkan baju", "tambah baju", "buka form pakaian"
+    )
+
+    private val openClothingCameraKeywords = listOf(
+        "buka kamera pakaian", "buka kamera baju", "ambil foto pakaian", "ambil foto baju"
+    )
+
+    private val scanRfidKeywords = listOf(
+        "pindai rfid", "scan rfid", "pindai nfc", "scan nfc", "kenali baju", "kenali pakaian", "identifikasi baju"
+    )
+
     private val historyKeywords = listOf(
         "riwayat", "history", "histori", "riwayat pakaian", "buka riwayat",
         "lihat riwayat", "riwayat baju", "catatan pakaian"
@@ -61,6 +81,21 @@ class IndonesianIntentRecognizer : IntentRecognizer {
         }
         if (matchesAny(normalized, repeatKeywords)) {
             return VoiceCommand.RepeatResponse
+        }
+        if (matchesAny(normalized, selectFirstRecommendationKeywords)) {
+            return VoiceCommand.SelectFirstRecommendation
+        }
+        if (matchesAny(normalized, listenRecommendationKeywords)) {
+            return VoiceCommand.ListenRecommendations
+        }
+        if (matchesAny(normalized, addClothingKeywords)) {
+            return VoiceCommand.AddClothing
+        }
+        if (matchesAny(normalized, openClothingCameraKeywords)) {
+            return VoiceCommand.OpenClothingCamera
+        }
+        if (matchesAny(normalized, scanRfidKeywords)) {
+            return VoiceCommand.ScanRfid
         }
 
         // 2. Navigation commands: History & Wardrobe
