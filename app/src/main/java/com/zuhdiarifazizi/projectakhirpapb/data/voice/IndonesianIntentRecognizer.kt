@@ -30,6 +30,10 @@ class IndonesianIntentRecognizer : IntentRecognizer {
         "buka kamera pakaian", "buka kamera baju", "ambil foto pakaian", "ambil foto baju"
     )
 
+    private val scanRfidKeywords = listOf(
+        "pindai rfid", "scan rfid", "pindai nfc", "scan nfc", "kenali baju", "kenali pakaian", "identifikasi baju"
+    )
+
     private val historyKeywords = listOf(
         "riwayat", "history", "histori", "riwayat pakaian", "buka riwayat",
         "lihat riwayat", "riwayat baju", "catatan pakaian"
@@ -89,6 +93,9 @@ class IndonesianIntentRecognizer : IntentRecognizer {
         }
         if (matchesAny(normalized, openClothingCameraKeywords)) {
             return VoiceCommand.OpenClothingCamera
+        }
+        if (matchesAny(normalized, scanRfidKeywords)) {
+            return VoiceCommand.ScanRfid
         }
 
         // 2. Navigation commands: History & Wardrobe

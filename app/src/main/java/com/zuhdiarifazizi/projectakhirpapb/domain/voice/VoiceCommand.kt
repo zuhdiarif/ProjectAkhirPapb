@@ -18,6 +18,7 @@ enum class VoiceIntentType {
     SELECT_FIRST_RECOMMENDATION,
     ADD_CLOTHING,
     OPEN_CLOTHING_CAMERA,
+    SCAN_RFID,
     UNKNOWN
 }
 
@@ -35,6 +36,7 @@ sealed class VoiceCommand(val type: VoiceIntentType) {
     data object SelectFirstRecommendation : VoiceCommand(VoiceIntentType.SELECT_FIRST_RECOMMENDATION)
     data object AddClothing : VoiceCommand(VoiceIntentType.ADD_CLOTHING)
     data object OpenClothingCamera : VoiceCommand(VoiceIntentType.OPEN_CLOTHING_CAMERA)
+    data object ScanRfid : VoiceCommand(VoiceIntentType.SCAN_RFID)
     data class Unknown(val rawText: String) : VoiceCommand(VoiceIntentType.UNKNOWN)
 
     fun toLegacyVoiceIntent(): VoiceIntent {
@@ -52,6 +54,7 @@ sealed class VoiceCommand(val type: VoiceIntentType) {
             is SelectFirstRecommendation -> VoiceIntent.Navigate(VoiceDestination.PICK_OUTFIT)
             is AddClothing -> VoiceIntent.AddNewClothing
             is OpenClothingCamera -> VoiceIntent.Navigate(VoiceDestination.MANAGE_CLOTHES)
+            is ScanRfid -> VoiceIntent.Navigate(VoiceDestination.MANAGE_CLOTHES)
             is Unknown -> VoiceIntent.Unknown(rawText)
         }
     }

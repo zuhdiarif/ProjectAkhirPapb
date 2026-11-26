@@ -153,6 +153,9 @@ class IndonesianIntentRecognizerTest {
         assertTrue(recognizer.recognize("Tambahkan pakaian").let { it is VoiceCommand.AddClothing })
         assertTrue(recognizer.recognize("Buka kamera pakaian").let { it is VoiceCommand.OpenClothingCamera })
         assertTrue(recognizer.recognize("Ambil foto baju").let { it is VoiceCommand.OpenClothingCamera })
+        assertTrue(recognizer.recognize("Pindai RFID pakaian").let { it is VoiceCommand.ScanRfid })
+        assertTrue(recognizer.recognize("Scan NFC baju ini").let { it is VoiceCommand.ScanRfid })
+        assertTrue(recognizer.recognize("Kenali pakaian saya").let { it is VoiceCommand.ScanRfid })
     }
 
     @Test
