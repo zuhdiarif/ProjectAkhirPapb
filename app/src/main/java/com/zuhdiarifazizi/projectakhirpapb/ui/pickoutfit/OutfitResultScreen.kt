@@ -36,6 +36,7 @@ fun OutfitResultScreen(
     recommendationNumber: Int,
     recommendationCount: Int,
     isVoiceListening: Boolean,
+    partialTranscript: String = "",
     onBack: () -> Unit,
     onVoiceClick: () -> Unit,
     onSpeak: () -> Unit,
@@ -60,7 +61,11 @@ fun OutfitResultScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = AuraTextSecondary
         )
-        VoiceActionButton(isListening = isVoiceListening, onClick = onVoiceClick)
+        VoiceActionButton(
+            isListening = isVoiceListening,
+            onClick = onVoiceClick,
+            partialTranscript = partialTranscript
+        )
 
         AuraCard {
             Column(verticalArrangement = Arrangement.spacedBy(AuraSpacing.sm)) {

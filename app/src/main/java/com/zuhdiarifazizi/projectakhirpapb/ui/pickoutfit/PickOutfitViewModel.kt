@@ -1,5 +1,6 @@
 package com.zuhdiarifazizi.projectakhirpapb.ui.pickoutfit
 
+import android.speech.tts.TextToSpeech
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.DemoClothingCatalog
@@ -26,7 +27,7 @@ class PickOutfitViewModel(
     private val _uiState = MutableStateFlow(PickOutfitUiState())
     val uiState: StateFlow<PickOutfitUiState> = _uiState.asStateFlow()
 
-    fun beginSelection(occasion: Occasion) {
+    fun beginSelection(occasion: Occasion, queueFollowUpSpeech: Boolean = false) {
         _uiState.update {
             it.copy(
                 step = PickOutfitStep.CATEGORY_SELECTION,
@@ -40,7 +41,10 @@ class PickOutfitViewModel(
                 statusMessage = null
             )
         }
-        speak("Kategori aktivitas ${occasion.displayName}. Pilih atasan dan bawahan. Pakaian luar opsional. Gunakan kotak centang untuk memilih kategori.")
+        speak(
+            text = "Kategori aktivitas ${occasion.displayName}. Pilih atasan dan bawahan. Pakaian luar opsional. Gunakan kotak centang untuk memilih kategori.",
+            queueMode = if (queueFollowUpSpeech) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+        )
         viewModelScope.launch {
             runCatching { clothesRepository.getClothesByUser(DemoClothingCatalog.USER_ID) }
                 .onSuccess { clothes ->
@@ -161,6 +165,15 @@ class PickOutfitViewModel(
         return chooseRecommendation(0)
     }
 
+    fun selectCurrentRecommendationByVoice(): Boolean {
+        val current = _uiState.value
+        if (current.candidates.isEmpty()) {
+            announceError("Belum ada rekomendasi. Pilih kategori pakaian dan minta rekomendasi terlebih dahulu.")
+            return false
+        }
+        return chooseRecommendation(current.currentCandidateIndex)
+    }
+
     fun speakCurrentRecommendationByVoice() {
         speakRecommendation()
     }
@@ -242,8 +255,8 @@ class PickOutfitViewModel(
         speak(message)
     }
 
-    private fun speak(text: String) {
-        ttsManager?.speak(text)
+    private fun speak(text: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH) {
+        ttsManager?.speak(text, queueMode = queueMode)
     }
 
     private val OutfitCandidate.colorScorePercent: Int

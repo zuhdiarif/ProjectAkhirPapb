@@ -1,5 +1,6 @@
 package com.zuhdiarifazizi.projectakhirpapb.ui.manageclothes
 
+import android.speech.tts.TextToSpeech
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zuhdiarifazizi.projectakhirpapb.data.classifier.DefaultClothingClassifier
@@ -73,7 +74,7 @@ class ManageClothesViewModel(
         }
     }
 
-    fun openAddGuide() {
+    fun openAddGuide(queueFollowUpSpeech: Boolean = false) {
         clearUncommittedStage()
         _uiState.update {
             it.copy(
@@ -89,8 +90,9 @@ class ManageClothesViewModel(
             )
         }
         announce(
-            "Tambah baju baru. Letakkan pakaian mendatar, ratakan lipatan, pastikan terlihat penuh di layar, " +
-                "dan pegang ponsel sejajar. Tekan Ambil Foto untuk memulai pemindai."
+            message = "Tambah baju baru. Letakkan pakaian mendatar, ratakan lipatan, pastikan terlihat penuh di layar, " +
+                "dan pegang ponsel sejajar. Tekan Ambil Foto untuk memulai pemindai.",
+            queueMode = if (queueFollowUpSpeech) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
         )
     }
 
@@ -112,7 +114,7 @@ class ManageClothesViewModel(
         announce("Form tambah pakaian dibuka. Isi nama, kategori, warna, motif, dan aktivitas. Foto dapat diambil atau dipilih dari galeri.")
     }
 
-    fun openScanFind() {
+    fun openScanFind(queueFollowUpSpeech: Boolean = false) {
         nfcTagReader?.refreshAvailability()
         _uiState.update {
             it.copy(
@@ -124,7 +126,10 @@ class ManageClothesViewModel(
                 errorMessage = null
             )
         }
-        announce("Mode kenali pakaian aktif. Tempelkan tag RFID ke belakang ponsel atau pilih Kenali lewat Kamera AI.")
+        announce(
+            message = "Mode kenali pakaian aktif. Tempelkan tag RFID ke belakang ponsel atau pilih Kenali lewat Kamera AI.",
+            queueMode = if (queueFollowUpSpeech) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+        )
     }
 
     fun openDetails(item: ClothingItem) {
@@ -480,19 +485,24 @@ class ManageClothesViewModel(
         announce("Foto dihapus dari formulir. Anda dapat menambahkan foto lain atau melanjutkan tanpa foto.")
     }
 
-    fun speakWardrobeOverview() {
+    fun speakWardrobeOverview(queueFollowUpSpeech: Boolean = false) {
         val items = _uiState.value.items
         hapticManager.performButtonClick()
+        val mode = if (queueFollowUpSpeech) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
         if (items.isEmpty()) {
-            ttsManager.speak("Lemari pakaian Anda masih kosong. Tekan Tambah baju baru untuk mulai mendigitalkan pakaian.")
+            ttsManager.speak(
+                text = "Lemari pakaian Anda masih kosong. Tekan Tambah baju baru untuk mulai mendigitalkan pakaian.",
+                queueMode = mode
+            )
             return
         }
         val tops = items.count { it.category == ClothingCategory.TOP_WEAR }
         val bottoms = items.count { it.category == ClothingCategory.BOTTOM_WEAR }
         val outers = items.count { it.category == ClothingCategory.OUTER_WEAR }
         ttsManager.speak(
-            "Lemari pakaian Anda berisi ${items.size} pakaian. " +
-                "$tops atasan, $bottoms bawahan, dan $outers luaran."
+            text = "Lemari pakaian Anda berisi ${items.size} pakaian. " +
+                "$tops atasan, $bottoms bawahan, dan $outers luaran.",
+            queueMode = mode
         )
     }
 
@@ -847,9 +857,9 @@ class ManageClothesViewModel(
         hapticManager.performButtonClick()
     }
 
-    private fun announce(message: String) {
+    private fun announce(message: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH) {
         _uiState.update { it.copy(statusMessage = message, errorMessage = null) }
-        ttsManager.speak(message)
+        ttsManager.speak(message, queueMode = queueMode)
     }
 
     private fun announceError(message: String) {

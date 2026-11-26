@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zuhdiarifazizi.projectakhirpapb.R
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraSecondaryButton
+import com.zuhdiarifazizi.projectakhirpapb.ui.home.components.VoiceActionButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraHighContrastInk
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraHintBannerBg
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraNavy
@@ -57,6 +58,9 @@ private val ADD_CLOTHING_STEPS = listOf(
 
 @Composable
 fun AddClothingGuideScreen(
+    isVoiceListening: Boolean = false,
+    partialTranscript: String = "",
+    onVoiceClick: () -> Unit = {},
     onBack: () -> Unit,
     onProfileClick: () -> Unit,
     onStartCamera: () -> Unit,
@@ -155,6 +159,12 @@ fun AddClothingGuideScreen(
                     )
                 )
             }
+
+            VoiceActionButton(
+                isListening = isVoiceListening,
+                onClick = onVoiceClick,
+                partialTranscript = partialTranscript
+            )
 
             ADD_CLOTHING_STEPS.forEach { step ->
                 HighContrastStepCard(step = step)

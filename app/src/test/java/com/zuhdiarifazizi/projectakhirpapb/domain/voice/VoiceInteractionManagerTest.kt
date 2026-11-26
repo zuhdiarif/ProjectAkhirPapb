@@ -193,4 +193,68 @@ class VoiceInteractionManagerTest {
         assertEquals(1, fakeHaptic.errorCount)
         assertTrue(fakeTts.spokenTexts.any { it.contains("Waktu bicara habis", ignoreCase = true) })
     }
+
+    @Test
+    fun repeatResponse_afterStartListening_repeatsPreviousRealGuidanceNotListeningCue() {
+        val realGuidance = "Rekomendasi satu: Kemeja Biru dan Celana Hitam."
+        fakeTts.speak(realGuidance)
+
+        voiceManager.startListening(hasRecordAudioPermission = true)
+        fakeStt.emitResult("Ulangi")
+
+        assertEquals(realGuidance, fakeTts.lastSpeech)
+        assertEquals(realGuidance, fakeTts.spokenTexts.last())
+    }
+
+    @Test
+    fun cancelListening_preservesLastSpeechAndIgnoresStaleSessionCallbacks() {
+        val realGuidance = "Panduan Beranda Aura."
+        fakeTts.speak(realGuidance)
+        var selectedOccasion: Occasion? = null
+        val callback = object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) { selectedOccasion = occasion }
+            override fun onOpenHistory() {}
+            override fun onOpenWardrobe() {}
+        }
+
+        voiceManager.startListening(hasRecordAudioPermission = true, navigationCallback = callback)
+        voiceManager.cancelListening()
+        fakeStt.emitResult("Mau kerja")
+
+        assertEquals(null, selectedOccasion)
+        assertEquals(VoiceSessionStatus.IDLE, voiceManager.state.value.status)
+        assertEquals(realGuidance, fakeTts.lastSpeech)
+    }
+
+    @Test
+    fun processRecognizedSpeech_extendedNavigationCommands_triggerAllCallbacks() {
+        var homeOpened = false
+        var backed = false
+        var continued = false
+        var nextRec = false
+        var currentSelected = false
+
+        val callback = object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) {}
+            override fun onOpenHistory() {}
+            override fun onOpenWardrobe() {}
+            override fun onOpenHome() { homeOpened = true }
+            override fun onNavigateBack() { backed = true }
+            override fun onContinueRecommendation() { continued = true }
+            override fun onNextRecommendation() { nextRec = true }
+            override fun onSelectCurrentRecommendation() { currentSelected = true }
+        }
+
+        voiceManager.processRecognizedSpeech("Buka beranda", callback)
+        voiceManager.processRecognizedSpeech("Kembali", callback)
+        voiceManager.processRecognizedSpeech("Lanjutkan", callback)
+        voiceManager.processRecognizedSpeech("Rekomendasi berikutnya", callback)
+        voiceManager.processRecognizedSpeech("Pilih pakaian ini", callback)
+
+        assertTrue(homeOpened)
+        assertTrue(backed)
+        assertTrue(continued)
+        assertTrue(nextRec)
+        assertTrue(currentSelected)
+    }
 }

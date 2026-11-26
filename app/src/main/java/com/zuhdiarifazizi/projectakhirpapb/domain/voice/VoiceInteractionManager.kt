@@ -14,6 +14,11 @@ interface VoiceNavigationCallback {
     fun onSelectOccasion(occasion: Occasion)
     fun onOpenHistory()
     fun onOpenWardrobe()
+    fun onOpenHome() {}
+    fun onNavigateBack() {}
+    fun onContinueRecommendation() {}
+    fun onNextRecommendation() {}
+    fun onSelectCurrentRecommendation() {}
     fun onListenRecommendations() {}
     fun onSelectFirstRecommendation() {}
     fun onAddClothing() {}
@@ -29,6 +34,8 @@ class VoiceInteractionManager(
 ) {
     private val _state = MutableStateFlow(VoiceInteractionState())
     val state: StateFlow<VoiceInteractionState> = _state.asStateFlow()
+
+    private var listenSessionToken: Long = 0L
 
     fun toggleVoiceInteraction(
         hasRecordAudioPermission: Boolean,
@@ -46,56 +53,73 @@ class VoiceInteractionManager(
         navigationCallback: VoiceNavigationCallback? = null
     ) {
         if (!hasRecordAudioPermission) {
+            ++listenSessionToken
             hapticManager.performError()
             val msg = "Izin mikrofon diperlukan untuk menggunakan perintah suara."
             _state.update {
                 it.copy(
                     status = VoiceSessionStatus.ERROR,
                     isListening = false,
+                    lastTranscript = "",
                     feedbackMessage = msg
                 )
             }
-            ttsManager.speak("Izin mikrofon belum diberikan. Silakan izinkan akses mikrofon.")
+            ttsManager.speak(
+                text = "Izin mikrofon belum diberikan. Silakan izinkan akses mikrofon.",
+                recordInHistory = false
+            )
             return
         }
 
+        val token = ++listenSessionToken
         hapticManager.performButtonClick()
         _state.update {
             it.copy(
                 status = VoiceSessionStatus.LISTENING,
                 isListening = true,
+                lastTranscript = "",
                 feedbackMessage = "Mendengarkan..."
             )
         }
-        ttsManager.speak("Mendengarkan. Silakan katakan tujuan pakaian Anda.")
 
-        speechRecognizerManager.startListening(
-            onResult = { recognizedText ->
-                processRecognizedSpeech(recognizedText, navigationCallback)
-            },
-            onError = { error ->
-                handleSpeechError(error)
-            },
-            onPartialResult = { partial ->
-                _state.update { it.copy(lastTranscript = partial) }
-            },
-            onListeningStateChanged = { listening ->
-                _state.update { it.copy(isListening = listening) }
-            }
-        )
+        // Wait for the short audio cue to finish before opening the microphone so STT
+        // does not capture our own TTS output, and keep lastSpeech intact for "Ulangi".
+        ttsManager.speakCue("Mendengarkan.") {
+            if (token != listenSessionToken) return@speakCue
+            speechRecognizerManager.startListening(
+                onResult = { recognizedText ->
+                    if (token != listenSessionToken) return@startListening
+                    processRecognizedSpeech(recognizedText, navigationCallback)
+                },
+                onError = { error ->
+                    if (token != listenSessionToken) return@startListening
+                    handleSpeechError(error)
+                },
+                onPartialResult = { partial ->
+                    if (token != listenSessionToken) return@startListening
+                    _state.update { it.copy(lastTranscript = partial) }
+                },
+                onListeningStateChanged = { listening ->
+                    if (token != listenSessionToken) return@startListening
+                    _state.update { it.copy(isListening = listening) }
+                }
+            )
+        }
     }
 
     fun cancelListening() {
+        ++listenSessionToken
         speechRecognizerManager.stopListening()
         hapticManager.performButtonClick()
         _state.update {
             it.copy(
                 status = VoiceSessionStatus.IDLE,
                 isListening = false,
+                lastTranscript = "",
                 feedbackMessage = null
             )
         }
-        ttsManager.speak("Perintah suara dibatalkan.")
+        ttsManager.speak("Perintah suara dibatalkan.", recordInHistory = false)
     }
 
     fun processRecognizedSpeech(
@@ -174,6 +198,17 @@ class VoiceInteractionManager(
                 }
                 navigationCallback?.onSelectOccasion(Occasion.OTHER)
             }
+            is VoiceCommand.OpenHome -> {
+                hapticManager.performSuccess()
+                ttsManager.speak("Membuka halaman Beranda.")
+                _state.update {
+                    it.copy(
+                        status = VoiceSessionStatus.SUCCESS,
+                        feedbackMessage = "Membuka Beranda"
+                    )
+                }
+                navigationCallback?.onOpenHome()
+            }
             is VoiceCommand.OpenHistory -> {
                 hapticManager.performSuccess()
                 ttsManager.speak("Membuka riwayat pakaian Anda.")
@@ -196,11 +231,56 @@ class VoiceInteractionManager(
                 }
                 navigationCallback?.onOpenWardrobe()
             }
+            is VoiceCommand.NavigateBack -> {
+                hapticManager.performButtonClick()
+                _state.update {
+                    it.copy(
+                        status = VoiceSessionStatus.SUCCESS,
+                        feedbackMessage = "Kembali ke halaman sebelumnya"
+                    )
+                }
+                if (navigationCallback != null) {
+                    navigationCallback.onNavigateBack()
+                } else {
+                    ttsManager.speak("Kembali ke halaman sebelumnya.")
+                }
+            }
             is VoiceCommand.RepeatResponse -> {
                 hapticManager.performButtonClick()
                 ttsManager.repeatLastSpeech()
                 _state.update {
-                    it.copy(status = VoiceSessionStatus.SUCCESS)
+                    it.copy(
+                        status = VoiceSessionStatus.SUCCESS,
+                        feedbackMessage = "Mengulang penjelasan terakhir"
+                    )
+                }
+            }
+            is VoiceCommand.ContinueRecommendation -> {
+                hapticManager.performSuccess()
+                _state.update {
+                    it.copy(
+                        status = VoiceSessionStatus.SUCCESS,
+                        feedbackMessage = "Membuat rekomendasi pakaian"
+                    )
+                }
+                if (navigationCallback != null) {
+                    navigationCallback.onContinueRecommendation()
+                } else {
+                    ttsManager.speak("Pilih kategori aktivitas terlebih dahulu untuk membuat rekomendasi.")
+                }
+            }
+            is VoiceCommand.NextRecommendation -> {
+                hapticManager.performButtonClick()
+                _state.update {
+                    it.copy(
+                        status = VoiceSessionStatus.SUCCESS,
+                        feedbackMessage = "Menampilkan rekomendasi berikutnya"
+                    )
+                }
+                if (navigationCallback != null) {
+                    navigationCallback.onNextRecommendation()
+                } else {
+                    ttsManager.speak("Buka daftar rekomendasi untuk melihat pilihan berikutnya.")
                 }
             }
             is VoiceCommand.ListenRecommendations -> {
@@ -231,6 +311,20 @@ class VoiceInteractionManager(
                     ttsManager.speak("Buka halaman rekomendasi pakaian untuk memilih rekomendasi pertama.")
                 }
             }
+            is VoiceCommand.SelectCurrentRecommendation -> {
+                hapticManager.performSuccess()
+                _state.update {
+                    it.copy(
+                        status = VoiceSessionStatus.SUCCESS,
+                        feedbackMessage = "Memilih rekomendasi saat ini"
+                    )
+                }
+                if (navigationCallback != null) {
+                    navigationCallback.onSelectCurrentRecommendation()
+                } else {
+                    ttsManager.speak("Buka halaman rekomendasi pakaian untuk memilih pakaian ini.")
+                }
+            }
             is VoiceCommand.AddClothing -> {
                 hapticManager.performSuccess()
                 _state.update { it.copy(status = VoiceSessionStatus.SUCCESS, feedbackMessage = "Membuka form tambah pakaian") }
@@ -254,8 +348,9 @@ class VoiceInteractionManager(
             }
             is VoiceCommand.Unknown -> {
                 hapticManager.performError()
-                val response = "Maaf, saya belum memahami perintah Anda. Silakan coba katakan: Kerja, Nongkrong, Olahraga, Streetwear, atau Buka Lemari."
-                ttsManager.speak(response)
+                val response =
+                    "Maaf, saya belum memahami perintah Anda. Silakan coba katakan: Kerja, Nongkrong, Olahraga, Streetwear, Buka Lemari, Lanjutkan, Ulangi, atau Kembali."
+                ttsManager.speak(response, recordInHistory = false)
                 _state.update {
                     it.copy(
                         status = VoiceSessionStatus.ERROR,
@@ -276,10 +371,11 @@ class VoiceInteractionManager(
                 feedbackMessage = userMsg
             )
         }
-        ttsManager.speak(userMsg)
+        ttsManager.speak(userMsg, recordInHistory = false)
     }
 
     fun cleanup() {
+        ++listenSessionToken
         speechRecognizerManager.destroy()
         ttsManager.stop()
     }

@@ -26,13 +26,22 @@ class FakeHapticFeedbackManager : HapticFeedbackManager {
 
 class FakeTextToSpeechManager : TextToSpeechManager {
     val spokenTexts = mutableListOf<String>()
+    val cueTexts = mutableListOf<String>()
     override var isSpeaking: Boolean = false
     override var lastSpeech: String? = null
 
-    override fun speak(text: String, queueMode: Int) {
+    override fun speak(text: String, queueMode: Int, recordInHistory: Boolean) {
         spokenTexts.add(text)
-        lastSpeech = text
+        if (recordInHistory) {
+            lastSpeech = text
+        }
         isSpeaking = true
+    }
+
+    override fun speakCue(text: String, onComplete: () -> Unit) {
+        cueTexts.add(text)
+        speak(text, queueMode = android.speech.tts.TextToSpeech.QUEUE_FLUSH, recordInHistory = false)
+        onComplete()
     }
 
     override fun repeatLastSpeech() {
@@ -168,5 +177,15 @@ class HomeViewModelTest {
 
         assertEquals(Occasion.WORK, selectedOccasion)
         assertFalse(vmWithVoice.uiState.value.isVoiceListening)
+    }
+
+    @Test
+    fun selectCategory_withAnnounceTtsFalse_doesNotSpeakDuplicateConfirmation() {
+        val target = viewModel.uiState.value.categories[0]
+        viewModel.selectCategory(target, announceTts = false)
+
+        assertEquals(target, viewModel.uiState.value.selectedCategory)
+        assertEquals(1, fakeHaptic.categorySelectedCount)
+        assertTrue(fakeTts.spokenTexts.isEmpty())
     }
 }

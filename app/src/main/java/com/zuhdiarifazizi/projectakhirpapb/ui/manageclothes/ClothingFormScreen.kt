@@ -52,6 +52,7 @@ fun ClothingFormScreen(
     statusMessage: String?,
     errorMessage: String?,
     isVoiceListening: Boolean,
+    partialTranscript: String = "",
     onBack: () -> Unit,
     onVoiceClick: () -> Unit,
     onNameChange: (String) -> Unit,
@@ -87,7 +88,11 @@ fun ClothingFormScreen(
             text = "Periksa hasil deteksi AI atau lengkapi detail secara manual. Anda juga dapat menautkan tag RFID 13,56 MHz.",
             style = MaterialTheme.typography.bodyMedium
         )
-        VoiceActionButton(isListening = isVoiceListening, onClick = onVoiceClick)
+        VoiceActionButton(
+            isListening = isVoiceListening,
+            onClick = onVoiceClick,
+            partialTranscript = partialTranscript
+        )
 
         if (isAnalyzingPhoto) {
             Surface(color = AuraIndigoSoft, shape = AuraShapes.medium, modifier = Modifier.fillMaxWidth()) {

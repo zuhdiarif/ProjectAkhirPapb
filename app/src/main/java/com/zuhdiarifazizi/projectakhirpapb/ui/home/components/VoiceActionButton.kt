@@ -25,6 +25,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zuhdiarifazizi.projectakhirpapb.R
@@ -35,11 +36,21 @@ import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraNavy
 fun VoiceActionButton(
     isListening: Boolean,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    partialTranscript: String = ""
 ) {
-    val buttonLabel = if (isListening) "Mendengarkan..." else "Gunakan perintah suara"
+    val cleanPartial = partialTranscript.trim()
+    val buttonLabel = when {
+        isListening && cleanPartial.isNotEmpty() -> "Mendengarkan: \"$cleanPartial\""
+        isListening -> "Mendengarkan..."
+        else -> "Gunakan perintah suara"
+    }
     val accessibilityDescription = if (isListening) {
-        "Sedang mendengarkan perintah suara"
+        if (cleanPartial.isNotEmpty()) {
+            "Sedang mendengarkan perintah suara. Terdengar $cleanPartial"
+        } else {
+            "Sedang mendengarkan perintah suara"
+        }
     } else {
         "Gunakan perintah suara"
     }
@@ -74,6 +85,8 @@ fun VoiceActionButton(
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = buttonLabel,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             style = MaterialTheme.typography.titleMedium.copy(
                 fontWeight = FontWeight.SemiBold,
                 color = Color.White,
