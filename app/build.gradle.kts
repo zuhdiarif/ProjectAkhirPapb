@@ -1,8 +1,26 @@
+import java.io.StringReader
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
 }
+
+val localPropertiesText = providers.fileContents(
+    rootProject.layout.projectDirectory.file("local.properties")
+).asText.orNull
+val localProperties = Properties().apply {
+    if (!localPropertiesText.isNullOrBlank()) {
+        load(StringReader(localPropertiesText))
+    }
+}
+val geminiApiKey = (localProperties.getProperty("GEMINI_API_KEY")
+    ?: providers.environmentVariable("GEMINI_API_KEY").orNull
+    ?: "")
+    .trim()
+    .replace("\\", "\\\\")
+    .replace("\"", "\\\"")
 
 android {
     namespace = "com.zuhdiarifazizi.projectakhirpapb"
@@ -18,6 +36,7 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField("String", "GEMINI_API_KEY", "\"$geminiApiKey\"")
     }
 
     buildTypes {
@@ -33,6 +52,12 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+    testOptions {
+        unitTests {
+            isReturnDefaultValues = true
+        }
     }
 }
 
@@ -59,6 +84,8 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     testImplementation(libs.junit)
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.turbine)
     androidTestImplementation(libs.androidx.room.testing)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
