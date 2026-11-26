@@ -34,6 +34,7 @@ import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraTextSecondary
 fun PickOutfitScreen(
     uiState: PickOutfitUiState,
     isVoiceListening: Boolean,
+    partialTranscript: String = "",
     onBackToHome: () -> Unit,
     onBackStep: () -> Unit,
     onVoiceClick: () -> Unit,
@@ -49,6 +50,9 @@ fun PickOutfitScreen(
     when (uiState.step) {
         PickOutfitStep.CATEGORY_SELECTION -> CategorySelectionContent(
             uiState = uiState,
+            isVoiceListening = isVoiceListening,
+            partialTranscript = partialTranscript,
+            onVoiceClick = onVoiceClick,
             onBack = onBackToHome,
             onCategoryChanged = onCategoryChanged,
             onContinue = onContinue,
@@ -58,6 +62,7 @@ fun PickOutfitScreen(
             candidates = uiState.candidates,
             currentCandidateIndex = uiState.currentCandidateIndex,
             isVoiceListening = isVoiceListening,
+            partialTranscript = partialTranscript,
             onBack = onBackStep,
             onVoiceClick = onVoiceClick,
             onSpeak = onSpeakRecommendation,
@@ -74,6 +79,7 @@ fun PickOutfitScreen(
                 recommendationNumber = uiState.currentCandidateIndex + 1,
                 recommendationCount = uiState.candidates.size,
                 isVoiceListening = isVoiceListening,
+                partialTranscript = partialTranscript,
                 onBack = onBackStep,
                 onVoiceClick = onVoiceClick,
                 onSpeak = onSpeakResult,
@@ -81,6 +87,9 @@ fun PickOutfitScreen(
             )
         } ?: CategorySelectionContent(
             uiState = uiState,
+            isVoiceListening = isVoiceListening,
+            partialTranscript = partialTranscript,
+            onVoiceClick = onVoiceClick,
             onBack = onBackToHome,
             onCategoryChanged = onCategoryChanged,
             onContinue = onContinue,
@@ -92,6 +101,9 @@ fun PickOutfitScreen(
 @Composable
 private fun CategorySelectionContent(
     uiState: PickOutfitUiState,
+    isVoiceListening: Boolean,
+    partialTranscript: String,
+    onVoiceClick: () -> Unit,
     onBack: () -> Unit,
     onCategoryChanged: (ClothingCategory, Boolean) -> Unit,
     onContinue: () -> Unit,
@@ -115,6 +127,11 @@ private fun CategorySelectionContent(
             text = "Aktivitas: ${uiState.selectedOccasion?.displayName ?: "belum dipilih"}",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.primary
+        )
+        VoiceActionButton(
+            isListening = isVoiceListening,
+            onClick = onVoiceClick,
+            partialTranscript = partialTranscript
         )
         Text(
             text = "Pilih atasan dan bawahan. Pakaian luar bersifat opsional.",

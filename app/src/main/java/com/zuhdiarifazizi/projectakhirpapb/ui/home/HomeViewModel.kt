@@ -76,17 +76,26 @@ class HomeViewModel(
         playWelcomeGuidance(force = true)
     }
 
-    fun selectCategory(category: ActivityCategory, onNavigate: (() -> Unit)? = null) {
+    fun selectCategory(
+        category: ActivityCategory,
+        announceTts: Boolean = true,
+        onNavigate: (() -> Unit)? = null
+    ) {
         hapticManager?.performCategorySelected()
         _uiState.update { it.copy(selectedCategory = category) }
-        ttsManager?.speak("Tujuan ${category.title} dipilih. Menyiapkan rekomendasi pakaian.")
+        if (announceTts) {
+            ttsManager?.speak("Tujuan ${category.title} dipilih. Menyiapkan rekomendasi pakaian.")
+        }
         onNavigate?.invoke()
     }
 
-    fun selectCategoryByOccasion(occasion: Occasion): ActivityCategory? {
+    fun selectCategoryByOccasion(
+        occasion: Occasion,
+        announceTts: Boolean = true
+    ): ActivityCategory? {
         val category = activityCategoryRepository.getCategoryByOccasion(occasion)
         if (category != null) {
-            selectCategory(category)
+            selectCategory(category, announceTts = announceTts)
         }
         return category
     }
@@ -171,7 +180,5 @@ class HomeViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        voiceInteractionManager?.cleanup()
-        ttsManager?.stop()
     }
 }

@@ -55,10 +55,12 @@ fun HomeScreen(
     onRepeatGuidance: () -> Unit,
     onDismissBanner: () -> Unit,
     onProfileClick: () -> Unit = {},
+    onScreenShown: () -> Unit = onRepeatGuidance,
+    partialTranscript: String = "",
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(Unit) {
-        onRepeatGuidance()
+        onScreenShown()
     }
 
     Surface(
@@ -146,6 +148,7 @@ fun HomeScreen(
             VoiceActionButton(
                 isListening = uiState.isVoiceListening,
                 onClick = onVoiceButtonClick,
+                partialTranscript = partialTranscript,
                 modifier = Modifier.fillMaxWidth()
             )
 

@@ -143,9 +143,35 @@ class IndonesianIntentRecognizerTest {
         assertTrue(recognizer.recognize("Dengarkan rekomendasi").let {
             it is VoiceCommand.ListenRecommendations
         })
+        assertTrue(recognizer.recognize("Dengarkan deskripsi").let {
+            it is VoiceCommand.ListenRecommendations
+        })
         assertTrue(recognizer.recognize("Pilih rekomendasi pertama").let {
             it is VoiceCommand.SelectFirstRecommendation
         })
+        assertTrue(recognizer.recognize("Pilih rekomendasi ini").let {
+            it is VoiceCommand.SelectCurrentRecommendation
+        })
+        assertTrue(recognizer.recognize("Pilih pakaian ini").let {
+            it is VoiceCommand.SelectCurrentRecommendation
+        })
+        assertTrue(recognizer.recognize("Rekomendasi berikutnya").let {
+            it is VoiceCommand.NextRecommendation
+        })
+        assertTrue(recognizer.recognize("Selanjutnya").let {
+            it is VoiceCommand.NextRecommendation
+        })
+        assertTrue(recognizer.recognize("Lanjutkan").let {
+            it is VoiceCommand.ContinueRecommendation
+        })
+    }
+
+    @Test
+    fun recognize_homeAndBackNavigationCommands() {
+        assertTrue(recognizer.recognize("Buka beranda").let { it is VoiceCommand.OpenHome })
+        assertTrue(recognizer.recognize("Kembali ke beranda").let { it is VoiceCommand.OpenHome })
+        assertTrue(recognizer.recognize("Kembali").let { it is VoiceCommand.NavigateBack })
+        assertTrue(recognizer.recognize("Halaman sebelumnya").let { it is VoiceCommand.NavigateBack })
     }
 
     @Test
@@ -153,6 +179,8 @@ class IndonesianIntentRecognizerTest {
         assertTrue(recognizer.recognize("Tambahkan pakaian").let { it is VoiceCommand.AddClothing })
         assertTrue(recognizer.recognize("Buka kamera pakaian").let { it is VoiceCommand.OpenClothingCamera })
         assertTrue(recognizer.recognize("Ambil foto baju").let { it is VoiceCommand.OpenClothingCamera })
+        assertTrue(recognizer.recognize("Ambil foto").let { it is VoiceCommand.OpenClothingCamera })
+        assertTrue(recognizer.recognize("Buka kamera").let { it is VoiceCommand.OpenClothingCamera })
         assertTrue(recognizer.recognize("Pindai RFID pakaian").let { it is VoiceCommand.ScanRfid })
         assertTrue(recognizer.recognize("Scan NFC baju ini").let { it is VoiceCommand.ScanRfid })
         assertTrue(recognizer.recognize("Kenali pakaian saya").let { it is VoiceCommand.ScanRfid })
@@ -178,5 +206,18 @@ class IndonesianIntentRecognizerTest {
         val result = recognizer.recognize("Pesawat terbang ke luar angkasa")
         assertEquals(VoiceIntentType.UNKNOWN, result.type)
         assertTrue(result is VoiceCommand.Unknown)
+    }
+
+    @Test
+    fun recognize_substringFalsePositives_returnsUnknown() {
+        val trickyPhrases = listOf(
+            "Mau pulang sekarang",
+            "Selain kemeja putih",
+            "Stopkontak rusak"
+        )
+        for (phrase in trickyPhrases) {
+            val result = recognizer.recognize(phrase)
+            assertEquals("Expected UNKNOWN for substring trap: $phrase", VoiceIntentType.UNKNOWN, result.type)
+        }
     }
 }

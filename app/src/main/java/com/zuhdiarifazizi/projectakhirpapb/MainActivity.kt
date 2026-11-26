@@ -5,22 +5,29 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.pm.PackageManager
-import android.os.Bundle
 import android.net.Uri
+import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -30,9 +37,18 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -48,24 +64,27 @@ import com.zuhdiarifazizi.projectakhirpapb.data.repository.InMemoryOutfitReposit
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.RoomClothesRepository
 import com.zuhdiarifazizi.projectakhirpapb.data.storage.ClothingPhotoStorage
 import com.zuhdiarifazizi.projectakhirpapb.data.voice.AndroidSpeechRecognizerManager
-import com.zuhdiarifazizi.projectakhirpapb.data.voice.IndonesianIntentRecognizer
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
-import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceInteractionManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceNavigationCallback
 import com.zuhdiarifazizi.projectakhirpapb.ui.auth.AuthScreen
 import com.zuhdiarifazizi.projectakhirpapb.ui.auth.AuthViewModel
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraBottomNavigation
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraSpeakingBanner
+import com.zuhdiarifazizi.projectakhirpapb.ui.components.FeedbackBanner
 import com.zuhdiarifazizi.projectakhirpapb.ui.history.HistoryScreen
 import com.zuhdiarifazizi.projectakhirpapb.ui.history.HistoryViewModel
 import com.zuhdiarifazizi.projectakhirpapb.ui.home.HomeScreen
 import com.zuhdiarifazizi.projectakhirpapb.ui.home.HomeViewModel
-import com.zuhdiarifazizi.projectakhirpapb.ui.manageclothes.ManageClothesScreen
 import com.zuhdiarifazizi.projectakhirpapb.ui.manageclothes.ManageClothesPage
+import com.zuhdiarifazizi.projectakhirpapb.ui.manageclothes.ManageClothesScreen
 import com.zuhdiarifazizi.projectakhirpapb.ui.manageclothes.ManageClothesViewModel
 import com.zuhdiarifazizi.projectakhirpapb.ui.navigation.AuraDestination
 import com.zuhdiarifazizi.projectakhirpapb.ui.pickoutfit.PickOutfitScreen
+import com.zuhdiarifazizi.projectakhirpapb.ui.pickoutfit.PickOutfitStep
 import com.zuhdiarifazizi.projectakhirpapb.ui.pickoutfit.PickOutfitViewModel
+import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraIndigoSoft
+import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraNavyDeep
+import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraSpacing
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.ProjectAkhirPapbTheme
 import com.zuhdiarifazizi.projectakhirpapb.ui.voice.VoiceViewModel
 import java.io.ByteArrayOutputStream
@@ -93,30 +112,23 @@ fun AuraAppShell() {
     val outfitRepository = remember { InMemoryOutfitRepository() }
     val categoryRepository = remember { DefaultActivityCategoryRepository() }
 
-    val ttsManager = remember { AndroidTextToSpeechManager(context) }
-    val hapticManager = remember { AndroidHapticFeedbackManager(context) }
-    val speechRecognizerManager = remember { AndroidSpeechRecognizerManager(context) }
-    val intentRecognizer = remember { IndonesianIntentRecognizer() }
-    val voiceInteractionManager = remember {
-        VoiceInteractionManager(
-            speechRecognizerManager = speechRecognizerManager,
-            intentRecognizer = intentRecognizer,
-            ttsManager = ttsManager,
-            hapticManager = hapticManager
+    val voiceViewModel: VoiceViewModel = viewModel {
+        val appContext = context.applicationContext
+        VoiceViewModel(
+            ttsManager = AndroidTextToSpeechManager(appContext),
+            hapticManager = AndroidHapticFeedbackManager(appContext),
+            speechRecognizerManager = AndroidSpeechRecognizerManager(appContext)
         )
     }
+    val ttsManager = voiceViewModel.ttsManager
+    val hapticManager = voiceViewModel.hapticManager
+    val voiceInteractionManager = voiceViewModel.voiceInteractionManager
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val activity = remember(context) { context.findActivity() }
     val nfcTagReader = remember(context) { AndroidNfcTagReader(context) }
     val classifier = remember {
         DefaultClothingClassifier(apiKey = BuildConfig.GEMINI_API_KEY)
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            voiceInteractionManager.cleanup()
-        }
     }
 
     DisposableEffect(lifecycleOwner, activity, nfcTagReader) {
@@ -146,7 +158,7 @@ fun AuraAppShell() {
             hapticManager = hapticManager,
             classifier = classifier,
             nfcTagReader = nfcTagReader,
-            photoByteReader = { uriString -> readSafeImageBytes(context, uriString) }
+            photoByteReader = { uriString -> readSafeImageBytes(context.applicationContext, uriString) }
         )
     }
     val pickOutfitViewModel: PickOutfitViewModel = viewModel {
@@ -159,7 +171,6 @@ fun AuraAppShell() {
     val historyViewModel: HistoryViewModel = viewModel {
         HistoryViewModel(clothesRepository, outfitRepository)
     }
-    val voiceViewModel: VoiceViewModel = viewModel { VoiceViewModel() }
     val homeViewModel: HomeViewModel = viewModel {
         HomeViewModel(
             activityCategoryRepository = categoryRepository,
@@ -169,6 +180,9 @@ fun AuraAppShell() {
         )
     }
 
+    val currentDestination by voiceViewModel.currentDestination.collectAsState()
+    val voiceState by voiceViewModel.state.collectAsState()
+    val globalFeedbackBanner by voiceViewModel.globalFeedbackBanner.collectAsState()
     val manageState by manageViewModel.uiState.collectAsState()
     val pickState by pickOutfitViewModel.uiState.collectAsState()
     val historyState by historyViewModel.uiState.collectAsState()
@@ -177,7 +191,6 @@ fun AuraAppShell() {
     val isTtsSpeaking by ttsManager.isSpeakingFlow.collectAsState()
     val activeSpeechText by ttsManager.currentSpeechFlow.collectAsState()
 
-    var currentDestination by remember { mutableStateOf(AuraDestination.AUTH) }
     var pendingFindCameraMode by remember { mutableStateOf(false) }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
@@ -209,6 +222,7 @@ fun AuraAppShell() {
             else -> cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
+    val latestRequestCameraAccess by rememberUpdatedState(requestCameraAccess)
     val openClothingGallery = {
         photoPickerLauncher.launch(
             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -217,17 +231,17 @@ fun AuraAppShell() {
 
     BackHandler(
         enabled = currentDestination == AuraDestination.REGISTER ||
-            (currentDestination == AuraDestination.PICK_OUTFIT && pickState.step != com.zuhdiarifazizi.projectakhirpapb.ui.pickoutfit.PickOutfitStep.CATEGORY_SELECTION) ||
+            (currentDestination == AuraDestination.PICK_OUTFIT && pickState.step != PickOutfitStep.CATEGORY_SELECTION) ||
             (currentDestination == AuraDestination.MANAGE_CLOTHES && manageState.page != ManageClothesPage.LIST)
     ) {
         when (currentDestination) {
             AuraDestination.REGISTER -> {
                 authViewModel.showLogin()
-                currentDestination = AuraDestination.AUTH
+                voiceViewModel.navigateTo(AuraDestination.AUTH)
             }
             AuraDestination.MANAGE_CLOTHES -> manageViewModel.navigateBack()
             AuraDestination.PICK_OUTFIT -> if (!pickOutfitViewModel.goToPreviousStep()) {
-                currentDestination = AuraDestination.HOME
+                voiceViewModel.navigateTo(AuraDestination.HOME)
             }
             else -> Unit
         }
@@ -236,49 +250,161 @@ fun AuraAppShell() {
     val voiceNavigationCallback = remember {
         object : VoiceNavigationCallback {
             override fun onSelectOccasion(occasion: Occasion) {
-                homeViewModel.selectCategoryByOccasion(occasion)
-                pickOutfitViewModel.beginSelection(occasion)
-                currentDestination = AuraDestination.PICK_OUTFIT
+                homeViewModel.selectCategoryByOccasion(occasion, announceTts = false)
+                pickOutfitViewModel.beginSelection(occasion, queueFollowUpSpeech = true)
+                voiceViewModel.navigateTo(AuraDestination.PICK_OUTFIT)
+            }
+
+            override fun onOpenHome() {
+                voiceViewModel.navigateTo(AuraDestination.HOME)
             }
 
             override fun onOpenHistory() {
-                currentDestination = AuraDestination.HISTORY
+                voiceViewModel.navigateTo(AuraDestination.HISTORY)
             }
 
             override fun onOpenWardrobe() {
-                currentDestination = AuraDestination.MANAGE_CLOTHES
+                if (manageViewModel.uiState.value.page != ManageClothesPage.LIST) {
+                    manageViewModel.returnToList()
+                }
+                voiceViewModel.navigateTo(AuraDestination.MANAGE_CLOTHES)
+            }
+
+            override fun onNavigateBack() {
+                when (voiceViewModel.currentDestination.value) {
+                    AuraDestination.REGISTER -> {
+                        authViewModel.showLogin()
+                        voiceViewModel.navigateTo(AuraDestination.AUTH)
+                        ttsManager.speak("Kembali ke halaman masuk.")
+                    }
+                    AuraDestination.MANAGE_CLOTHES -> {
+                        val activePage = manageViewModel.uiState.value.page
+                        if (activePage != ManageClothesPage.LIST) {
+                            manageViewModel.navigateBack()
+                            if (activePage == ManageClothesPage.ADD_GUIDE ||
+                                activePage == ManageClothesPage.SCAN_FIND ||
+                                activePage == ManageClothesPage.DETAIL
+                            ) {
+                                ttsManager.speak("Kembali ke daftar pakaian.")
+                            }
+                        } else {
+                            voiceViewModel.navigateTo(AuraDestination.HOME)
+                            ttsManager.speak("Kembali ke halaman Beranda.")
+                        }
+                    }
+                    AuraDestination.PICK_OUTFIT -> {
+                        if (!pickOutfitViewModel.goToPreviousStep()) {
+                            voiceViewModel.navigateTo(AuraDestination.HOME)
+                            ttsManager.speak("Kembali ke halaman Beranda.")
+                        }
+                    }
+                    AuraDestination.HISTORY -> {
+                        voiceViewModel.navigateTo(AuraDestination.HOME)
+                        ttsManager.speak("Kembali ke halaman Beranda.")
+                    }
+                    AuraDestination.HOME, AuraDestination.AUTH -> {
+                        ttsManager.speak("Anda sudah berada di halaman awal.")
+                    }
+                }
             }
 
             override fun onAddClothing() {
-                manageViewModel.openAddGuide()
-                currentDestination = AuraDestination.MANAGE_CLOTHES
+                manageViewModel.openAddGuide(queueFollowUpSpeech = true)
+                voiceViewModel.navigateTo(AuraDestination.MANAGE_CLOTHES)
             }
 
             override fun onOpenClothingCamera() {
-                val activePage = manageViewModel.uiState.value.page
-                if (currentDestination == AuraDestination.MANAGE_CLOTHES && activePage == ManageClothesPage.CAMERA) {
-                    manageViewModel.requestVoiceCapture()
+                val activeDest = voiceViewModel.currentDestination.value
+                val activeManageState = manageViewModel.uiState.value
+                if (activeDest == AuraDestination.MANAGE_CLOTHES && activeManageState.page == ManageClothesPage.CAMERA) {
+                    if (activeManageState.capturedCameraPhotoUri != null) {
+                        manageViewModel.useCapturedPhoto()
+                    } else {
+                        manageViewModel.requestVoiceCapture()
+                    }
                     return
                 }
-                if (activePage != ManageClothesPage.FORM && activePage != ManageClothesPage.ADD_GUIDE) {
+                if (activeManageState.page != ManageClothesPage.FORM && activeManageState.page != ManageClothesPage.ADD_GUIDE) {
                     manageViewModel.openAddGuide()
                 }
-                currentDestination = AuraDestination.MANAGE_CLOTHES
-                requestCameraAccess(false)
+                voiceViewModel.navigateTo(AuraDestination.MANAGE_CLOTHES)
+                latestRequestCameraAccess(false)
             }
 
             override fun onScanRfid() {
-                manageViewModel.openScanFind()
-                currentDestination = AuraDestination.MANAGE_CLOTHES
+                manageViewModel.openScanFind(queueFollowUpSpeech = true)
+                voiceViewModel.navigateTo(AuraDestination.MANAGE_CLOTHES)
+            }
+
+            override fun onContinueRecommendation() {
+                val activeDest = voiceViewModel.currentDestination.value
+                val pickStep = pickOutfitViewModel.uiState.value.step
+                val capturedUri = manageViewModel.uiState.value.capturedCameraPhotoUri
+                when {
+                    activeDest == AuraDestination.PICK_OUTFIT && pickStep == PickOutfitStep.CATEGORY_SELECTION -> {
+                        pickOutfitViewModel.generateRecommendations()
+                    }
+                    activeDest == AuraDestination.MANAGE_CLOTHES &&
+                        manageViewModel.uiState.value.page == ManageClothesPage.CAMERA &&
+                        capturedUri != null -> {
+                        manageViewModel.useCapturedPhoto()
+                    }
+                    else -> {
+                        ttsManager.speak("Pilih tujuan aktivitas terlebih dahulu untuk membuat rekomendasi outfit.")
+                    }
+                }
+            }
+
+            override fun onNextRecommendation() {
+                if (pickOutfitViewModel.uiState.value.candidates.isNotEmpty()) {
+                    voiceViewModel.navigateTo(AuraDestination.PICK_OUTFIT)
+                    pickOutfitViewModel.nextRecommendation()
+                } else {
+                    ttsManager.speak("Belum ada daftar rekomendasi. Pilih tujuan aktivitas terlebih dahulu.")
+                }
             }
 
             override fun onListenRecommendations() {
-                pickOutfitViewModel.speakCurrentRecommendationByVoice()
+                val activeDest = voiceViewModel.currentDestination.value
+                val activePickState = pickOutfitViewModel.uiState.value
+                val activeManageState = manageViewModel.uiState.value
+                when {
+                    activeDest == AuraDestination.PICK_OUTFIT && activePickState.step == PickOutfitStep.RESULT -> {
+                        pickOutfitViewModel.speakSelectedResult()
+                    }
+                    activeDest == AuraDestination.PICK_OUTFIT && activePickState.step == PickOutfitStep.RECOMMENDATIONS -> {
+                        pickOutfitViewModel.speakCurrentRecommendationByVoice()
+                    }
+                    activeDest == AuraDestination.PICK_OUTFIT && activePickState.step == PickOutfitStep.CATEGORY_SELECTION -> {
+                        pickOutfitViewModel.generateRecommendations()
+                    }
+                    activeDest == AuraDestination.MANAGE_CLOTHES -> when (activeManageState.page) {
+                        ManageClothesPage.LIST -> manageViewModel.speakWardrobeOverview()
+                        ManageClothesPage.DETAIL -> activeManageState.selectedItem?.let(manageViewModel::speakItemSummary)
+                        ManageClothesPage.SCAN_FIND -> activeManageState.matchedScanItem?.let(manageViewModel::speakItemSummary)
+                            ?: ttsManager.speak("Belum ada pakaian yang dipindai. Tempelkan tag RFID atau gunakan kamera AI.")
+                        ManageClothesPage.CAMERA -> manageViewModel.speakCurrentScannerInstruction()
+                        else -> ttsManager.speak(activeManageState.statusMessage ?: "Halaman kelola pakaian aktif.")
+                    }
+                    activePickState.candidates.isNotEmpty() -> {
+                        voiceViewModel.navigateTo(AuraDestination.PICK_OUTFIT)
+                        pickOutfitViewModel.speakCurrentRecommendationByVoice()
+                    }
+                    else -> {
+                        ttsManager.speak("Buka halaman rekomendasi atau lemari pakaian untuk mendengarkan deskripsi.")
+                    }
+                }
+            }
+
+            override fun onSelectCurrentRecommendation() {
+                if (pickOutfitViewModel.selectCurrentRecommendationByVoice()) {
+                    voiceViewModel.navigateTo(AuraDestination.PICK_OUTFIT)
+                }
             }
 
             override fun onSelectFirstRecommendation() {
                 if (pickOutfitViewModel.selectFirstRecommendationByVoice()) {
-                    currentDestination = AuraDestination.PICK_OUTFIT
+                    voiceViewModel.navigateTo(AuraDestination.PICK_OUTFIT)
                 }
             }
         }
@@ -321,7 +447,7 @@ fun AuraAppShell() {
                 TopAppBar(
                     title = { Text(currentDestination.label) },
                     navigationIcon = {
-                        TextButton(onClick = { currentDestination = AuraDestination.HOME }) {
+                        TextButton(onClick = { voiceViewModel.navigateTo(AuraDestination.HOME) }) {
                             Text("Back")
                         }
                     }
@@ -336,7 +462,7 @@ fun AuraAppShell() {
                 AuraBottomNavigation(
                     currentDestination = currentDestination,
                     onNavigate = { destination ->
-                        currentDestination = destination
+                        voiceViewModel.navigateTo(destination)
                     }
                 )
             }
@@ -352,6 +478,20 @@ fun AuraAppShell() {
                 currentSpeech = activeSpeechText,
                 onStop = ttsManager::stop
             )
+            if (currentDestination != AuraDestination.AUTH && currentDestination != AuraDestination.REGISTER) {
+                if (voiceState.isListening && voiceState.lastTranscript.isNotBlank()) {
+                    VoiceLiveTranscriptBanner(transcript = voiceState.lastTranscript)
+                }
+                if (currentDestination != AuraDestination.HOME) {
+                    globalFeedbackBanner?.let { banner ->
+                        FeedbackBanner(
+                            feedback = banner,
+                            onDismiss = voiceViewModel::dismissGlobalBanner,
+                            modifier = Modifier.padding(horizontal = AuraSpacing.md, vertical = 4.dp)
+                        )
+                    }
+                }
+            }
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -370,13 +510,13 @@ fun AuraAppShell() {
                         onSubmit = authViewModel::submitForm,
                         onShowRegister = {
                             authViewModel.showRegister()
-                            currentDestination = AuraDestination.REGISTER
+                            voiceViewModel.navigateTo(AuraDestination.REGISTER)
                         },
                         onShowLogin = {
                             authViewModel.showLogin()
-                            currentDestination = AuraDestination.AUTH
+                            voiceViewModel.navigateTo(AuraDestination.AUTH)
                         },
-                        onContinueAsDemo = { currentDestination = AuraDestination.HOME },
+                        onContinueAsDemo = { voiceViewModel.navigateTo(AuraDestination.HOME) },
                         modifier = screenModifier
                     )
                     AuraDestination.HOME -> HomeScreen(
@@ -384,34 +524,39 @@ fun AuraAppShell() {
                         onCategoryClick = { category ->
                             homeViewModel.selectCategory(category) {
                                 pickOutfitViewModel.beginSelection(category.occasion)
-                                currentDestination = AuraDestination.PICK_OUTFIT
+                                voiceViewModel.navigateTo(AuraDestination.PICK_OUTFIT)
                             }
                         },
                         onVoiceButtonClick = onVoiceActionClick,
                         onRepeatGuidance = {
                             homeViewModel.repeatGuidance()
                         },
+                        onScreenShown = {
+                            homeViewModel.playWelcomeGuidance(force = false)
+                        },
                         onDismissBanner = {
                             homeViewModel.dismissFeedbackBanner()
                         },
                         onProfileClick = {
                             authViewModel.showLogin()
-                            currentDestination = AuraDestination.AUTH
+                            voiceViewModel.navigateTo(AuraDestination.AUTH)
                         },
+                        partialTranscript = voiceState.lastTranscript,
                         modifier = screenModifier
                     )
                     AuraDestination.MANAGE_CLOTHES -> ManageClothesScreen(
                         uiState = manageState,
-                        isVoiceListening = homeState.isVoiceListening,
+                        isVoiceListening = voiceState.isListening,
+                        partialTranscript = voiceState.lastTranscript,
                         onVoiceClick = onVoiceActionClick,
                         onProfileClick = {
                             authViewModel.showLogin()
-                            currentDestination = AuraDestination.AUTH
+                            voiceViewModel.navigateTo(AuraDestination.AUTH)
                         },
-                        onAddGuide = manageViewModel::openAddGuide,
+                        onAddGuide = { manageViewModel.openAddGuide() },
                         onAddManual = manageViewModel::openAddForm,
-                        onScanFind = manageViewModel::openScanFind,
-                        onSpeakOverview = manageViewModel::speakWardrobeOverview,
+                        onScanFind = { manageViewModel.openScanFind() },
+                        onSpeakOverview = { manageViewModel.speakWardrobeOverview() },
                         onSpeakItem = manageViewModel::speakItemSummary,
                         onItemDetails = manageViewModel::openDetails,
                         onEdit = manageViewModel::openEditForm,
@@ -456,8 +601,9 @@ fun AuraAppShell() {
                     )
                     AuraDestination.PICK_OUTFIT -> PickOutfitScreen(
                         uiState = pickState,
-                        isVoiceListening = homeState.isVoiceListening,
-                        onBackToHome = { currentDestination = AuraDestination.HOME },
+                        isVoiceListening = voiceState.isListening,
+                        partialTranscript = voiceState.lastTranscript,
+                        onBackToHome = { voiceViewModel.navigateTo(AuraDestination.HOME) },
                         onBackStep = { pickOutfitViewModel.goToPreviousStep() },
                         onVoiceClick = onVoiceActionClick,
                         onCategoryChanged = pickOutfitViewModel::setCategorySelected,
@@ -471,10 +617,49 @@ fun AuraAppShell() {
                     )
                     AuraDestination.HISTORY -> HistoryScreen(
                         uiState = historyState,
+                        isVoiceListening = voiceState.isListening,
+                        partialTranscript = voiceState.lastTranscript,
+                        onVoiceClick = onVoiceActionClick,
                         modifier = screenModifier
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun VoiceLiveTranscriptBanner(transcript: String) {
+    Surface(
+        color = AuraIndigoSoft,
+        shape = RoundedCornerShape(10.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = AuraSpacing.md, vertical = 4.dp)
+            .semantics { liveRegion = LiveRegionMode.Polite }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                painter = painterResource(R.drawable.ic_mic),
+                contentDescription = null,
+                tint = AuraNavyDeep,
+                modifier = Modifier.size(18.dp)
+            )
+            Text(
+                text = "Terdengar: \"$transcript\"",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontWeight = FontWeight.SemiBold,
+                    color = AuraNavyDeep
+                ),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
         }
     }
 }

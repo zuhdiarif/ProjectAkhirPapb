@@ -10,11 +10,13 @@ import com.zuhdiarifazizi.projectakhirpapb.domain.voice.SpeechRecognizerManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceRecognitionError
 
 class AndroidSpeechRecognizerManager(
-    private val context: Context
+    context: Context
 ) : SpeechRecognizerManager {
 
+    private val appContext = context.applicationContext
     private var speechRecognizer: SpeechRecognizer? = null
     private var _isListening: Boolean = false
+    private var activeSessionId: Long = 0L
 
     override val isListening: Boolean
         get() = _isListening
@@ -25,89 +27,114 @@ class AndroidSpeechRecognizerManager(
         onPartialResult: ((String) -> Unit)?,
         onListeningStateChanged: ((Boolean) -> Unit)?
     ) {
-        if (!SpeechRecognizer.isRecognitionAvailable(context)) {
+        if (!SpeechRecognizer.isRecognitionAvailable(appContext)) {
+            _isListening = false
+            onListeningStateChanged?.invoke(false)
             onError(VoiceRecognitionError.ServiceUnavailable)
             return
         }
 
-        stopListening()
+        val sessionId = ++activeSessionId
+        releaseRecognizer()
 
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context).apply {
-            setRecognitionListener(object : RecognitionListener {
-                override fun onReadyForSpeech(params: Bundle?) {
-                    _isListening = true
-                    onListeningStateChanged?.invoke(true)
-                }
-
-                override fun onBeginningOfSpeech() {}
-                override fun onRmsChanged(rmsdB: Float) {}
-                override fun onBufferReceived(buffer: ByteArray?) {}
-
-                override fun onEndOfSpeech() {
-                    _isListening = false
-                    onListeningStateChanged?.invoke(false)
-                }
-
-                override fun onError(error: Int) {
-                    _isListening = false
-                    onListeningStateChanged?.invoke(false)
-                    val voiceError = mapErrorCode(error)
-                    onError(voiceError)
-                }
-
-                override fun onResults(results: Bundle?) {
-                    _isListening = false
-                    onListeningStateChanged?.invoke(false)
-                    val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    val text = matches?.firstOrNull()?.trim()
-                    if (!text.isNullOrEmpty()) {
-                        onResult(text)
-                    } else {
-                        onError(VoiceRecognitionError.NoMatch)
-                    }
-                }
-
-                override fun onPartialResults(partialResults: Bundle?) {
-                    val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
-                    matches?.firstOrNull()?.let { onPartialResult?.invoke(it) }
-                }
-
-                override fun onEvent(eventType: Int, params: Bundle?) {}
-            })
+        val recognizer = try {
+            SpeechRecognizer.createSpeechRecognizer(appContext)
+        } catch (e: Exception) {
+            _isListening = false
+            onListeningStateChanged?.invoke(false)
+            onError(VoiceRecognitionError.Unknown(-1, e.message ?: "Failed to create SpeechRecognizer"))
+            return
         }
+
+        recognizer.setRecognitionListener(object : RecognitionListener {
+            override fun onReadyForSpeech(params: Bundle?) {
+                if (sessionId != activeSessionId) return
+                _isListening = true
+                onListeningStateChanged?.invoke(true)
+            }
+
+            override fun onBeginningOfSpeech() {}
+            override fun onRmsChanged(rmsdB: Float) {}
+            override fun onBufferReceived(buffer: ByteArray?) {}
+
+            override fun onEndOfSpeech() {
+                if (sessionId != activeSessionId) return
+                _isListening = false
+                onListeningStateChanged?.invoke(false)
+            }
+
+            override fun onError(error: Int) {
+                if (sessionId != activeSessionId) return
+                _isListening = false
+                onListeningStateChanged?.invoke(false)
+                releaseRecognizer()
+                onError(mapErrorCode(error))
+            }
+
+            override fun onResults(results: Bundle?) {
+                if (sessionId != activeSessionId) return
+                _isListening = false
+                onListeningStateChanged?.invoke(false)
+                val matches = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                val text = matches?.firstOrNull()?.trim()
+                releaseRecognizer()
+                if (!text.isNullOrEmpty()) {
+                    onResult(text)
+                } else {
+                    onError(VoiceRecognitionError.NoMatch)
+                }
+            }
+
+            override fun onPartialResults(partialResults: Bundle?) {
+                if (sessionId != activeSessionId) return
+                val matches = partialResults?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
+                matches?.firstOrNull()?.let { onPartialResult?.invoke(it) }
+            }
+
+            override fun onEvent(eventType: Int, params: Bundle?) {}
+        })
+
+        speechRecognizer = recognizer
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, "id-ID")
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, "id-ID")
-            putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, "id-ID")
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
         }
 
         try {
-            speechRecognizer?.startListening(intent)
+            _isListening = true
+            onListeningStateChanged?.invoke(true)
+            recognizer.startListening(intent)
         } catch (e: Exception) {
-            _isListening = false
+            releaseRecognizer()
             onListeningStateChanged?.invoke(false)
             onError(VoiceRecognitionError.Unknown(-1, e.message ?: "Unknown error"))
         }
     }
 
     override fun stopListening() {
-        try {
-            speechRecognizer?.stopListening()
-            speechRecognizer?.cancel()
-        } catch (_: Exception) {}
-        _isListening = false
+        ++activeSessionId
+        releaseRecognizer()
     }
 
     override fun destroy() {
-        stopListening()
-        try {
-            speechRecognizer?.destroy()
-        } catch (_: Exception) {}
+        ++activeSessionId
+        releaseRecognizer()
+    }
+
+    private fun releaseRecognizer() {
+        _isListening = false
+        val current = speechRecognizer
         speechRecognizer = null
+        try {
+            current?.cancel()
+        } catch (_: Exception) {}
+        try {
+            current?.destroy()
+        } catch (_: Exception) {}
     }
 
     private fun mapErrorCode(error: Int): VoiceRecognitionError {

@@ -68,6 +68,7 @@ import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraDestructiveButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraPrimaryButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraSecondaryButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.ClothingImage
+import com.zuhdiarifazizi.projectakhirpapb.ui.home.components.VoiceActionButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraHighContrastInk
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraIndigoSoft
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraIndigoWash
@@ -87,6 +88,7 @@ import java.io.File
 fun ManageClothesScreen(
     uiState: ManageClothesUiState,
     isVoiceListening: Boolean,
+    partialTranscript: String = "",
     onVoiceClick: () -> Unit,
     onProfileClick: () -> Unit,
     onAddGuide: () -> Unit,
@@ -138,6 +140,9 @@ fun ManageClothesScreen(
     when (uiState.page) {
         ManageClothesPage.LIST -> ClothesList(
             uiState = uiState,
+            isVoiceListening = isVoiceListening,
+            partialTranscript = partialTranscript,
+            onVoiceClick = onVoiceClick,
             onProfileClick = onProfileClick,
             onAddGuide = onAddGuide,
             onScanFind = onScanFind,
@@ -152,6 +157,9 @@ fun ManageClothesScreen(
         )
 
         ManageClothesPage.ADD_GUIDE -> AddClothingGuideScreen(
+            isVoiceListening = isVoiceListening,
+            partialTranscript = partialTranscript,
+            onVoiceClick = onVoiceClick,
             onBack = onBackToList,
             onProfileClick = onProfileClick,
             onStartCamera = onCameraClick,
@@ -164,6 +172,8 @@ fun ManageClothesScreen(
             hud = uiState.scannerHud,
             captureRequestId = uiState.captureRequestId,
             capturedPhotoUri = uiState.capturedCameraPhotoUri,
+            isVoiceListening = isVoiceListening,
+            onVoiceClick = onVoiceClick,
             onBack = onCancelCamera,
             onOpenGallery = onGalleryClick,
             onToggleTorch = onToggleTorch,
@@ -191,6 +201,7 @@ fun ManageClothesScreen(
             statusMessage = uiState.statusMessage,
             errorMessage = uiState.errorMessage,
             isVoiceListening = isVoiceListening,
+            partialTranscript = partialTranscript,
             onBack = onFormBack,
             onVoiceClick = onVoiceClick,
             onNameChange = onNameChange,
@@ -214,6 +225,9 @@ fun ManageClothesScreen(
             ClothingDetails(
                 item = item,
                 statusMessage = uiState.statusMessage,
+                isVoiceListening = isVoiceListening,
+                partialTranscript = partialTranscript,
+                onVoiceClick = onVoiceClick,
                 onBack = onBackToList,
                 onSpeak = { onSpeakItem(item) },
                 onMarkWornToday = onMarkWornToday,
@@ -231,6 +245,9 @@ fun ManageClothesScreen(
             matchedItem = uiState.matchedScanItem,
             matchedScore = uiState.matchedVisualScore,
             statusMessage = uiState.scanStatusMessage,
+            isVoiceListening = isVoiceListening,
+            partialTranscript = partialTranscript,
+            onVoiceClick = onVoiceClick,
             onBack = onBackToList,
             onRecognizeWithCamera = onFindCameraClick,
             onRecognizeWithGallery = onGalleryClick,
@@ -261,6 +278,9 @@ fun ManageClothesScreen(
 @Composable
 private fun ClothesList(
     uiState: ManageClothesUiState,
+    isVoiceListening: Boolean,
+    partialTranscript: String,
+    onVoiceClick: () -> Unit,
     onProfileClick: () -> Unit,
     onAddGuide: () -> Unit,
     onScanFind: () -> Unit,
@@ -415,6 +435,14 @@ private fun ClothesList(
                         }
                     }
                 }
+            }
+
+            item {
+                VoiceActionButton(
+                    isListening = isVoiceListening,
+                    onClick = onVoiceClick,
+                    partialTranscript = partialTranscript
+                )
             }
 
             item {
@@ -895,6 +923,9 @@ private fun BadgeChip(text: String, bgColor: Color, textColor: Color) {
 private fun ClothingDetails(
     item: ClothingItem,
     statusMessage: String?,
+    isVoiceListening: Boolean,
+    partialTranscript: String,
+    onVoiceClick: () -> Unit,
     onBack: () -> Unit,
     onSpeak: () -> Unit,
     onMarkWornToday: () -> Unit,
@@ -911,6 +942,11 @@ private fun ClothingDetails(
     ) {
         AuraSecondaryButton(text = "Kembali ke daftar", onClick = onBack)
         Text(item.name, modifier = Modifier.semantics { heading() }, style = MaterialTheme.typography.headlineSmall)
+        VoiceActionButton(
+            isListening = isVoiceListening,
+            onClick = onVoiceClick,
+            partialTranscript = partialTranscript
+        )
         ClothingImage(item = item, imageHeight = 220.dp)
         AuraCard {
             Column(verticalArrangement = Arrangement.spacedBy(AuraSpacing.xs)) {

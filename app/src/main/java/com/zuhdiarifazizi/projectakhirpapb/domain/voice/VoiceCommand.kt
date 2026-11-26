@@ -10,12 +10,17 @@ enum class VoiceIntentType {
     SELECT_SPORT,
     SELECT_STREETWEAR,
     SELECT_OTHER,
+    OPEN_HOME,
     OPEN_HISTORY,
     OPEN_WARDROBE,
+    NAVIGATE_BACK,
     REPEAT_RESPONSE,
     CANCEL_ACTION,
+    CONTINUE_RECOMMENDATION,
+    NEXT_RECOMMENDATION,
     LISTEN_RECOMMENDATIONS,
     SELECT_FIRST_RECOMMENDATION,
+    SELECT_CURRENT_RECOMMENDATION,
     ADD_CLOTHING,
     OPEN_CLOTHING_CAMERA,
     SCAN_RFID,
@@ -28,12 +33,17 @@ sealed class VoiceCommand(val type: VoiceIntentType) {
     data object SelectSport : VoiceCommand(VoiceIntentType.SELECT_SPORT)
     data object SelectStreetwear : VoiceCommand(VoiceIntentType.SELECT_STREETWEAR)
     data object SelectOther : VoiceCommand(VoiceIntentType.SELECT_OTHER)
+    data object OpenHome : VoiceCommand(VoiceIntentType.OPEN_HOME)
     data object OpenHistory : VoiceCommand(VoiceIntentType.OPEN_HISTORY)
     data object OpenWardrobe : VoiceCommand(VoiceIntentType.OPEN_WARDROBE)
+    data object NavigateBack : VoiceCommand(VoiceIntentType.NAVIGATE_BACK)
     data object RepeatResponse : VoiceCommand(VoiceIntentType.REPEAT_RESPONSE)
     data object CancelAction : VoiceCommand(VoiceIntentType.CANCEL_ACTION)
+    data object ContinueRecommendation : VoiceCommand(VoiceIntentType.CONTINUE_RECOMMENDATION)
+    data object NextRecommendation : VoiceCommand(VoiceIntentType.NEXT_RECOMMENDATION)
     data object ListenRecommendations : VoiceCommand(VoiceIntentType.LISTEN_RECOMMENDATIONS)
     data object SelectFirstRecommendation : VoiceCommand(VoiceIntentType.SELECT_FIRST_RECOMMENDATION)
+    data object SelectCurrentRecommendation : VoiceCommand(VoiceIntentType.SELECT_CURRENT_RECOMMENDATION)
     data object AddClothing : VoiceCommand(VoiceIntentType.ADD_CLOTHING)
     data object OpenClothingCamera : VoiceCommand(VoiceIntentType.OPEN_CLOTHING_CAMERA)
     data object ScanRfid : VoiceCommand(VoiceIntentType.SCAN_RFID)
@@ -46,12 +56,17 @@ sealed class VoiceCommand(val type: VoiceIntentType) {
             is SelectSport -> VoiceIntent.SelectOccasion(Occasion.EXERCISE)
             is SelectStreetwear -> VoiceIntent.SelectOccasion(Occasion.STREETWEAR)
             is SelectOther -> VoiceIntent.SelectOccasion(Occasion.OTHER)
+            is OpenHome -> VoiceIntent.Navigate(VoiceDestination.HOME)
             is OpenHistory -> VoiceIntent.Navigate(VoiceDestination.HISTORY)
             is OpenWardrobe -> VoiceIntent.Navigate(VoiceDestination.MANAGE_CLOTHES)
+            is NavigateBack -> VoiceIntent.GoBack
             is RepeatResponse -> VoiceIntent.ReadScreen
             is CancelAction -> VoiceIntent.GoBack
+            is ContinueRecommendation -> VoiceIntent.Navigate(VoiceDestination.PICK_OUTFIT)
+            is NextRecommendation -> VoiceIntent.Navigate(VoiceDestination.PICK_OUTFIT)
             is ListenRecommendations -> VoiceIntent.Navigate(VoiceDestination.PICK_OUTFIT)
             is SelectFirstRecommendation -> VoiceIntent.Navigate(VoiceDestination.PICK_OUTFIT)
+            is SelectCurrentRecommendation -> VoiceIntent.Navigate(VoiceDestination.PICK_OUTFIT)
             is AddClothing -> VoiceIntent.AddNewClothing
             is OpenClothingCamera -> VoiceIntent.Navigate(VoiceDestination.MANAGE_CLOTHES)
             is ScanRfid -> VoiceIntent.Navigate(VoiceDestination.MANAGE_CLOTHES)
