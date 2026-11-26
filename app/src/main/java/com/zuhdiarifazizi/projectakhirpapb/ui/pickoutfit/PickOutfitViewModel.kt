@@ -137,6 +137,12 @@ class PickOutfitViewModel(
             announceError("Belum ada rekomendasi untuk dibacakan.")
             return
         }
+        _uiState.update {
+            it.copy(
+                statusMessage = "Membacakan rekomendasi ${index + 1} dari ${current.candidates.size}.",
+                errorMessage = null
+            )
+        }
         hapticManager?.performButtonClick()
         speak(description(candidate, index, current.candidates.size))
     }

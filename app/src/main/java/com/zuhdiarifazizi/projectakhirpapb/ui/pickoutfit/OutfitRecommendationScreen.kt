@@ -18,8 +18,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.OutfitCandidate
@@ -62,6 +65,7 @@ fun OutfitRecommendationScreen(
             ScreenBackButton(text = "Kembali ke kategori", onClick = onBack)
             Text(
                 text = "Rekomendasi Pakaian",
+                modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.headlineSmall,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -124,12 +128,17 @@ private fun RecommendationCard(
     onViewDetails: () -> Unit,
     onChoose: () -> Unit
 ) {
-    AuraCard {
+    AuraCard(
+        modifier = Modifier.semantics {
+            stateDescription = if (isCurrent) "Sedang ditinjau" else "Rekomendasi tersedia"
+        }
+    ) {
         Column(verticalArrangement = Arrangement.spacedBy(AuraSpacing.sm)) {
             Text(
                 text = "Rekomendasi ${index + 1} dari $total${if (isCurrent) ", sedang ditinjau" else ""}",
                 style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.semantics { heading() }
             )
             OutfitGarmentGallery(candidate = candidate, imageHeight = 116.dp)
             Text(
@@ -152,17 +161,29 @@ private fun RecommendationCard(
             AuraSecondaryButton(
                 text = "Dengarkan Deskripsi",
                 onClick = onSpeak,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "Dengarkan deskripsi Rekomendasi ${index + 1}, ${outfitName(candidate)}"
+                    }
             )
             AuraSecondaryButton(
                 text = "Lihat Detail",
                 onClick = onViewDetails,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "Lihat detail Rekomendasi ${index + 1}, ${outfitName(candidate)}"
+                    }
             )
             AuraPrimaryButton(
                 text = "Pilih Pakaian Ini",
                 onClick = onChoose,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "Pilih pakaian Rekomendasi ${index + 1}, ${outfitName(candidate)}"
+                    }
             )
         }
     }
