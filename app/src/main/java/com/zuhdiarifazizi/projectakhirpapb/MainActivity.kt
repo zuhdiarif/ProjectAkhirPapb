@@ -14,7 +14,10 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
@@ -52,6 +55,7 @@ import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceNavigationCallback
 import com.zuhdiarifazizi.projectakhirpapb.ui.auth.AuthScreen
 import com.zuhdiarifazizi.projectakhirpapb.ui.auth.AuthViewModel
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraBottomNavigation
+import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraSpeakingBanner
 import com.zuhdiarifazizi.projectakhirpapb.ui.history.HistoryScreen
 import com.zuhdiarifazizi.projectakhirpapb.ui.history.HistoryViewModel
 import com.zuhdiarifazizi.projectakhirpapb.ui.home.HomeScreen
@@ -170,6 +174,8 @@ fun AuraAppShell() {
     val historyState by historyViewModel.uiState.collectAsState()
     val homeState by homeViewModel.uiState.collectAsState()
     val authState by authViewModel.uiState.collectAsState()
+    val isTtsSpeaking by ttsManager.isSpeakingFlow.collectAsState()
+    val activeSpeechText by ttsManager.currentSpeechFlow.collectAsState()
 
     var currentDestination by remember { mutableStateOf(AuraDestination.AUTH) }
     var pendingFindCameraMode by remember { mutableStateOf(false) }
@@ -336,122 +342,139 @@ fun AuraAppShell() {
             }
         }
     ) { innerPadding ->
-        val screenModifier = Modifier.padding(innerPadding)
-        when (currentDestination) {
-            AuraDestination.AUTH, AuraDestination.REGISTER -> AuthScreen(
-                uiState = authState,
-                onNameChange = authViewModel::onNameChange,
-                onEmailChange = authViewModel::onEmailChange,
-                onPasswordChange = authViewModel::onPasswordChange,
-                onConfirmPasswordChange = authViewModel::onConfirmPasswordChange,
-                onTogglePasswordVisibility = authViewModel::togglePasswordVisibility,
-                onToggleConfirmPasswordVisibility = authViewModel::toggleConfirmPasswordVisibility,
-                onSubmit = authViewModel::submitForm,
-                onShowRegister = {
-                    authViewModel.showRegister()
-                    currentDestination = AuraDestination.REGISTER
-                },
-                onShowLogin = {
-                    authViewModel.showLogin()
-                    currentDestination = AuraDestination.AUTH
-                },
-                onContinueAsDemo = { currentDestination = AuraDestination.HOME },
-                modifier = screenModifier
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            AuraSpeakingBanner(
+                isSpeaking = isTtsSpeaking,
+                currentSpeech = activeSpeechText,
+                onStop = ttsManager::stop
             )
-            AuraDestination.HOME -> HomeScreen(
-                uiState = homeState,
-                onCategoryClick = { category ->
-                    homeViewModel.selectCategory(category) {
-                        pickOutfitViewModel.beginSelection(category.occasion)
-                        currentDestination = AuraDestination.PICK_OUTFIT
-                    }
-                },
-                onVoiceButtonClick = onVoiceActionClick,
-                onRepeatGuidance = {
-                    homeViewModel.repeatGuidance()
-                },
-                onDismissBanner = {
-                    homeViewModel.dismissFeedbackBanner()
-                },
-                onProfileClick = {
-                    authViewModel.showLogin()
-                    currentDestination = AuraDestination.AUTH
-                },
-                modifier = screenModifier
-            )
-            AuraDestination.MANAGE_CLOTHES -> ManageClothesScreen(
-                uiState = manageState,
-                isVoiceListening = homeState.isVoiceListening,
-                onVoiceClick = onVoiceActionClick,
-                onProfileClick = {
-                    authViewModel.showLogin()
-                    currentDestination = AuraDestination.AUTH
-                },
-                onAddGuide = manageViewModel::openAddGuide,
-                onAddManual = manageViewModel::openAddForm,
-                onScanFind = manageViewModel::openScanFind,
-                onSpeakOverview = manageViewModel::speakWardrobeOverview,
-                onSpeakItem = manageViewModel::speakItemSummary,
-                onItemDetails = manageViewModel::openDetails,
-                onEdit = manageViewModel::openEditForm,
-                onSearchChange = manageViewModel::onSearchChange,
-                onCategoryFilter = manageViewModel::setCategoryFilter,
-                onRequestDelete = { manageViewModel.requestDeleteConfirmation(it) },
-                onCancelDelete = manageViewModel::cancelDelete,
-                onConfirmDelete = manageViewModel::confirmDelete,
-                onFormBack = manageViewModel::cancelForm,
-                onNameChange = manageViewModel::onNameChange,
-                onMaterialChange = manageViewModel::onMaterialChange,
-                onCategoryChange = manageViewModel::onCategoryChange,
-                onPatternChange = manageViewModel::onPatternChange,
-                onOccasionChange = manageViewModel::onOccasionChange,
-                onColorChange = manageViewModel::onColorChange,
-                onCameraClick = { requestCameraAccess(false) },
-                onFindCameraClick = { requestCameraAccess(true) },
-                onGalleryClick = openClothingGallery,
-                onRemovePhoto = manageViewModel::removeSelectedPhoto,
-                onBindRfidClick = manageViewModel::startRfidBindingInForm,
-                onCancelRfidBind = manageViewModel::cancelRfidBindingInForm,
-                onClearRfid = manageViewModel::clearRfidInForm,
-                onSimulateRfidTap = manageViewModel::simulateRfidTap,
-                onSave = manageViewModel::saveForm,
-                onBackToList = manageViewModel::returnToList,
-                onEditSelected = { manageState.selectedItem?.let(manageViewModel::openEditForm) },
-                onMarkWornToday = manageViewModel::markSelectedAsWornToday,
-                onToggleTorch = manageViewModel::toggleScannerTorch,
-                onToggleCameraFacing = manageViewModel::toggleScannerCameraFacing,
-                onToggleVoiceGuidance = manageViewModel::toggleScannerVoiceGuidance,
-                onSpeakCameraInstruction = manageViewModel::speakCurrentScannerInstruction,
-                onScannerFrameEvaluated = manageViewModel::onScannerFrameEvaluated,
-                onCameraReady = manageViewModel::onCameraReady,
-                onCameraUnavailable = manageViewModel::onCameraUnavailable,
-                onCameraCaptureFailed = manageViewModel::onCameraCaptureFailed,
-                onCameraPhotoCaptured = manageViewModel::onCameraPhotoCaptured,
-                onUseCapturedPhoto = manageViewModel::useCapturedPhoto,
-                onRetakePhoto = manageViewModel::retakePhoto,
-                onCancelCamera = manageViewModel::cancelCamera,
-                createCameraFile = photoStorage::createCameraOutputFile,
-                modifier = screenModifier
-            )
-            AuraDestination.PICK_OUTFIT -> PickOutfitScreen(
-                uiState = pickState,
-                isVoiceListening = homeState.isVoiceListening,
-                onBackToHome = { currentDestination = AuraDestination.HOME },
-                onBackStep = { pickOutfitViewModel.goToPreviousStep() },
-                onVoiceClick = onVoiceActionClick,
-                onCategoryChanged = pickOutfitViewModel::setCategorySelected,
-                onContinue = { pickOutfitViewModel.generateRecommendations() },
-                onNextRecommendation = pickOutfitViewModel::nextRecommendation,
-                onSpeakRecommendation = pickOutfitViewModel::speakRecommendation,
-                onViewDetails = pickOutfitViewModel::viewRecommendationDetails,
-                onChooseRecommendation = { pickOutfitViewModel.chooseRecommendation(it) },
-                onSpeakResult = pickOutfitViewModel::speakSelectedResult,
-                modifier = screenModifier
-            )
-            AuraDestination.HISTORY -> HistoryScreen(
-                uiState = historyState,
-                modifier = screenModifier
-            )
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) {
+                val screenModifier = Modifier.fillMaxSize()
+                when (currentDestination) {
+                    AuraDestination.AUTH, AuraDestination.REGISTER -> AuthScreen(
+                        uiState = authState,
+                        onNameChange = authViewModel::onNameChange,
+                        onEmailChange = authViewModel::onEmailChange,
+                        onPasswordChange = authViewModel::onPasswordChange,
+                        onConfirmPasswordChange = authViewModel::onConfirmPasswordChange,
+                        onTogglePasswordVisibility = authViewModel::togglePasswordVisibility,
+                        onToggleConfirmPasswordVisibility = authViewModel::toggleConfirmPasswordVisibility,
+                        onSubmit = authViewModel::submitForm,
+                        onShowRegister = {
+                            authViewModel.showRegister()
+                            currentDestination = AuraDestination.REGISTER
+                        },
+                        onShowLogin = {
+                            authViewModel.showLogin()
+                            currentDestination = AuraDestination.AUTH
+                        },
+                        onContinueAsDemo = { currentDestination = AuraDestination.HOME },
+                        modifier = screenModifier
+                    )
+                    AuraDestination.HOME -> HomeScreen(
+                        uiState = homeState,
+                        onCategoryClick = { category ->
+                            homeViewModel.selectCategory(category) {
+                                pickOutfitViewModel.beginSelection(category.occasion)
+                                currentDestination = AuraDestination.PICK_OUTFIT
+                            }
+                        },
+                        onVoiceButtonClick = onVoiceActionClick,
+                        onRepeatGuidance = {
+                            homeViewModel.repeatGuidance()
+                        },
+                        onDismissBanner = {
+                            homeViewModel.dismissFeedbackBanner()
+                        },
+                        onProfileClick = {
+                            authViewModel.showLogin()
+                            currentDestination = AuraDestination.AUTH
+                        },
+                        modifier = screenModifier
+                    )
+                    AuraDestination.MANAGE_CLOTHES -> ManageClothesScreen(
+                        uiState = manageState,
+                        isVoiceListening = homeState.isVoiceListening,
+                        onVoiceClick = onVoiceActionClick,
+                        onProfileClick = {
+                            authViewModel.showLogin()
+                            currentDestination = AuraDestination.AUTH
+                        },
+                        onAddGuide = manageViewModel::openAddGuide,
+                        onAddManual = manageViewModel::openAddForm,
+                        onScanFind = manageViewModel::openScanFind,
+                        onSpeakOverview = manageViewModel::speakWardrobeOverview,
+                        onSpeakItem = manageViewModel::speakItemSummary,
+                        onItemDetails = manageViewModel::openDetails,
+                        onEdit = manageViewModel::openEditForm,
+                        onSearchChange = manageViewModel::onSearchChange,
+                        onCategoryFilter = manageViewModel::setCategoryFilter,
+                        onRequestDelete = { manageViewModel.requestDeleteConfirmation(it) },
+                        onCancelDelete = manageViewModel::cancelDelete,
+                        onConfirmDelete = manageViewModel::confirmDelete,
+                        onFormBack = manageViewModel::cancelForm,
+                        onNameChange = manageViewModel::onNameChange,
+                        onMaterialChange = manageViewModel::onMaterialChange,
+                        onCategoryChange = manageViewModel::onCategoryChange,
+                        onPatternChange = manageViewModel::onPatternChange,
+                        onOccasionChange = manageViewModel::onOccasionChange,
+                        onColorChange = manageViewModel::onColorChange,
+                        onCameraClick = { requestCameraAccess(false) },
+                        onFindCameraClick = { requestCameraAccess(true) },
+                        onGalleryClick = openClothingGallery,
+                        onRemovePhoto = manageViewModel::removeSelectedPhoto,
+                        onBindRfidClick = manageViewModel::startRfidBindingInForm,
+                        onCancelRfidBind = manageViewModel::cancelRfidBindingInForm,
+                        onClearRfid = manageViewModel::clearRfidInForm,
+                        onSimulateRfidTap = manageViewModel::simulateRfidTap,
+                        onSave = manageViewModel::saveForm,
+                        onBackToList = manageViewModel::returnToList,
+                        onEditSelected = { manageState.selectedItem?.let(manageViewModel::openEditForm) },
+                        onMarkWornToday = manageViewModel::markSelectedAsWornToday,
+                        onToggleTorch = manageViewModel::toggleScannerTorch,
+                        onToggleCameraFacing = manageViewModel::toggleScannerCameraFacing,
+                        onToggleVoiceGuidance = manageViewModel::toggleScannerVoiceGuidance,
+                        onSpeakCameraInstruction = manageViewModel::speakCurrentScannerInstruction,
+                        onScannerFrameEvaluated = manageViewModel::onScannerFrameEvaluated,
+                        onCameraReady = manageViewModel::onCameraReady,
+                        onCameraUnavailable = manageViewModel::onCameraUnavailable,
+                        onCameraCaptureFailed = manageViewModel::onCameraCaptureFailed,
+                        onCameraPhotoCaptured = manageViewModel::onCameraPhotoCaptured,
+                        onUseCapturedPhoto = manageViewModel::useCapturedPhoto,
+                        onRetakePhoto = manageViewModel::retakePhoto,
+                        onCancelCamera = manageViewModel::cancelCamera,
+                        createCameraFile = photoStorage::createCameraOutputFile,
+                        modifier = screenModifier
+                    )
+                    AuraDestination.PICK_OUTFIT -> PickOutfitScreen(
+                        uiState = pickState,
+                        isVoiceListening = homeState.isVoiceListening,
+                        onBackToHome = { currentDestination = AuraDestination.HOME },
+                        onBackStep = { pickOutfitViewModel.goToPreviousStep() },
+                        onVoiceClick = onVoiceActionClick,
+                        onCategoryChanged = pickOutfitViewModel::setCategorySelected,
+                        onContinue = { pickOutfitViewModel.generateRecommendations() },
+                        onNextRecommendation = pickOutfitViewModel::nextRecommendation,
+                        onSpeakRecommendation = pickOutfitViewModel::speakRecommendation,
+                        onViewDetails = pickOutfitViewModel::viewRecommendationDetails,
+                        onChooseRecommendation = { pickOutfitViewModel.chooseRecommendation(it) },
+                        onSpeakResult = pickOutfitViewModel::speakSelectedResult,
+                        modifier = screenModifier
+                    )
+                    AuraDestination.HISTORY -> HistoryScreen(
+                        uiState = historyState,
+                        modifier = screenModifier
+                    )
+                }
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +21,11 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -78,6 +84,7 @@ fun AuthScreen(
             Spacer(Modifier.height(AuraSpacing.xl))
             Text(
                 text = if (uiState.isRegister) "Buat akun" else "Selamat datang",
+                modifier = Modifier.semantics { heading() },
                 style = MaterialTheme.typography.headlineSmall,
                 color = AuraTextPrimary
             )
@@ -128,7 +135,14 @@ fun AuthScreen(
                     PasswordVisualTransformation()
                 },
                 trailingAction = {
-                    TextButton(onClick = onTogglePasswordVisibility) {
+                    TextButton(
+                        onClick = onTogglePasswordVisibility,
+                        modifier = Modifier
+                            .defaultMinSize(minHeight = 48.dp)
+                            .semantics {
+                                contentDescription = if (uiState.isPasswordVisible) "Sembunyikan password" else "Tampilkan password"
+                            }
+                    ) {
                         Text(
                             text = if (uiState.isPasswordVisible) "Sembunyikan" else "Tampilkan",
                             style = MaterialTheme.typography.labelSmall,
@@ -153,7 +167,18 @@ fun AuthScreen(
                         PasswordVisualTransformation()
                     },
                     trailingAction = {
-                        TextButton(onClick = onToggleConfirmPasswordVisibility) {
+                        TextButton(
+                            onClick = onToggleConfirmPasswordVisibility,
+                            modifier = Modifier
+                                .defaultMinSize(minHeight = 48.dp)
+                                .semantics {
+                                    contentDescription = if (uiState.isConfirmPasswordVisible) {
+                                        "Sembunyikan konfirmasi password"
+                                    } else {
+                                        "Tampilkan konfirmasi password"
+                                    }
+                                }
+                        ) {
                             Text(
                                 text = if (uiState.isConfirmPasswordVisible) "Sembunyikan" else "Tampilkan",
                                 style = MaterialTheme.typography.labelSmall,
@@ -167,7 +192,9 @@ fun AuthScreen(
             uiState.statusMessage?.let { message ->
                 Spacer(Modifier.height(AuraSpacing.md))
                 Surface(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { liveRegion = LiveRegionMode.Polite },
                     shape = MaterialTheme.shapes.medium,
                     color = AuraCardSelectedBg
                 ) {
@@ -199,7 +226,10 @@ fun AuthScreen(
                     style = MaterialTheme.typography.bodyMedium,
                     color = AuraTextSecondary
                 )
-                TextButton(onClick = if (uiState.isRegister) onShowLogin else onShowRegister) {
+                TextButton(
+                    onClick = if (uiState.isRegister) onShowLogin else onShowRegister,
+                    modifier = Modifier.defaultMinSize(minHeight = 48.dp)
+                ) {
                     Text(
                         text = if (uiState.isRegister) "Login" else "Register",
                         color = AuraNavy
@@ -217,7 +247,9 @@ fun AuthScreen(
                 Spacer(Modifier.height(AuraSpacing.xs))
                 Text(
                     text = "Mode demo tidak membuat akun atau mengirim data login.",
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics(mergeDescendants = true) {},
                     style = MaterialTheme.typography.bodySmall,
                     color = AuraTextSecondary
                 )
