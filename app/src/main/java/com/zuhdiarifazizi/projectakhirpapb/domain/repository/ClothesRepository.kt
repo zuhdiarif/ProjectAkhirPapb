@@ -7,6 +7,7 @@ interface ClothesRepository {
     fun observeClothes(userId: String): Flow<List<ClothingItem>>
     suspend fun getClothesByUser(userId: String): List<ClothingItem>
     suspend fun getClothingById(itemId: String): ClothingItem?
+    suspend fun getClothingByRfid(rfidTagUid: String): ClothingItem? = null
     suspend fun upsertClothing(item: ClothingItem)
     suspend fun deleteClothing(itemId: String)
 }

@@ -8,10 +8,11 @@ import com.zuhdiarifazizi.projectakhirpapb.data.local.toDomain
 import com.zuhdiarifazizi.projectakhirpapb.data.local.toEntity
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingItem
 import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ClothesRepository
+import com.zuhdiarifazizi.projectakhirpapb.domain.security.SecurityInputValidator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -33,9 +34,16 @@ class RoomClothesRepository(private val database: AuraDatabase) : ClothesReposit
         return database.clothingDao().getById(itemId)?.toDomain()
     }
 
+    override suspend fun getClothingByRfid(rfidTagUid: String): ClothingItem? {
+        ensureDemoSeeded()
+        val normalized = SecurityInputValidator.normalizeNfcUidString(rfidTagUid) ?: return null
+        return database.clothingDao().getByRfidTag(normalized)?.toDomain()
+    }
+
     override suspend fun upsertClothing(item: ClothingItem) {
         ensureDemoSeeded()
-        database.clothingDao().upsert(item.toEntity())
+        val normalizedUid = item.rfidTagUid?.let { SecurityInputValidator.normalizeNfcUidString(it) }
+        database.clothingDao().upsert(item.copy(rfidTagUid = normalizedUid).toEntity())
     }
 
     override suspend fun deleteClothing(itemId: String) {
