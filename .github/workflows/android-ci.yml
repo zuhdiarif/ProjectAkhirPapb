@@ -33,7 +33,7 @@ jobs:
             echo "$forbidden"
             exit 1
           fi
-          leaks=$(git grep -n -E 'AIza[0-9A-Za-z_-]{30,}|AKIA[0-9A-Z]{16}|BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY' -- ':!.github/workflows/android-ci.yml' || true)
+          leaks=$(git grep -n -E 'AIza[0-9A-Za-z_-]{30,}|AQ\.[0-9A-Za-z_-]{25,}|AKIA[0-9A-Z]{16}|BEGIN (RSA|EC|OPENSSH|PRIVATE) KEY' -- ':!.github/workflows/android-ci.yml' || true)
           if [ -n "$leaks" ]; then
             echo "::error::Potential secret or API key detected in tracked files:"
             echo "$leaks"

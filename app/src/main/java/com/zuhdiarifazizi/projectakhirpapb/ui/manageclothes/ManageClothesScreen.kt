@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -116,6 +117,7 @@ fun ManageClothesScreen(
     onSave: () -> Unit,
     onBackToList: () -> Unit,
     onEditSelected: () -> Unit,
+    onMarkWornToday: () -> Unit = {},
     onToggleTorch: () -> Unit,
     onToggleCameraFacing: () -> Unit,
     onToggleVoiceGuidance: () -> Unit,
@@ -212,6 +214,7 @@ fun ManageClothesScreen(
                 statusMessage = uiState.statusMessage,
                 onBack = onBackToList,
                 onSpeak = { onSpeakItem(item) },
+                onMarkWornToday = onMarkWornToday,
                 onEdit = onEditSelected,
                 onDelete = { onRequestDelete(item) },
                 modifier = modifier
@@ -756,7 +759,10 @@ private fun FigmaClothingItemCard(
                         }
                     }
 
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                         BadgeChip(text = item.category.displayName, bgColor = AuraIndigoSoft, textColor = AuraNavyDeep)
                         if (item.material.isNotBlank()) {
                             BadgeChip(text = item.material, bgColor = AuraIndigoWash, textColor = AuraTextSecondary)
@@ -872,6 +878,7 @@ private fun ClothingDetails(
     statusMessage: String?,
     onBack: () -> Unit,
     onSpeak: () -> Unit,
+    onMarkWornToday: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier
@@ -901,6 +908,7 @@ private fun ClothingDetails(
             Text(it, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
         }
         AuraPrimaryButton("Dengarkan Deskripsi", onSpeak, modifier = Modifier.fillMaxWidth())
+        AuraSecondaryButton("Tandai Dipakai Hari Ini", onMarkWornToday, modifier = Modifier.fillMaxWidth())
         AuraSecondaryButton("Edit Pakaian & Tag RFID", onEdit, modifier = Modifier.fillMaxWidth())
         AuraDestructiveButton("Hapus Pakaian", onDelete, modifier = Modifier.fillMaxWidth())
         Spacer(Modifier.height(AuraSpacing.md))

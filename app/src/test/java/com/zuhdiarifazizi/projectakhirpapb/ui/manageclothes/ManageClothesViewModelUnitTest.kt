@@ -197,6 +197,16 @@ class ManageClothesViewModelUnitTest {
         assertNotNull(viewModel.uiState.value.matchedScanItem)
 
         val target = viewModel.uiState.value.items.first()
+        viewModel.openDetails(target)
+        viewModel.markSelectedAsWornToday()
+        assertNotNull(viewModel.uiState.value.selectedItem?.lastWornEpochMillis)
+        assertTrue(tts.lastSpeech.orEmpty().contains("ditandai dipakai hari ini"))
+
+        viewModel.openCamera(findMode = false)
+        viewModel.requestVoiceCapture()
+        assertEquals(1, viewModel.uiState.value.captureRequestId)
+        viewModel.cancelCamera()
+
         viewModel.returnToList()
         viewModel.requestDeleteConfirmation(target)
         assertTrue(viewModel.uiState.value.showDeleteConfirmation)

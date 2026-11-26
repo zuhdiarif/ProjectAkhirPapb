@@ -52,18 +52,21 @@ class GeminiVisionClothingClassifierTest {
         val result = classifier.classify(sampleBytes).getOrThrow()
 
         assertFalse(transportCalled)
+        assertFalse(result.isAiPowered)
         assertEquals("Pakaian Biru dongker", result.suggestedName)
         assertEquals(sampleNavyColor, result.dominantColor)
         assertEquals(0.60f, result.confidence, 0.001f)
     }
 
     @Test
-    fun classify_validMarkdownWrappedJson_parsesSanitizesAndForwardsApiKey() = runTest {
+    fun classify_validMarkdownWrappedJson_parsesSanitizesAndCachesDuplicateImageCalls() = runTest {
         var capturedKey = ""
+        var callCount = 0
         val classifier = GeminiVisionClothingClassifier(
             apiKey = "secret-gemini-key",
             transport = { key, _, _ ->
                 capturedKey = key
+                callCount++
                 """
                     ```json
                     {
@@ -83,7 +86,11 @@ class GeminiVisionClothingClassifierTest {
         )
 
         val result = classifier.classify(sampleBytes).getOrThrow()
+        val cachedSecond = classifier.classify(sampleBytes.copyOf()).getOrThrow()
 
+        assertEquals(1, callCount)
+        assertTrue(result.isAiPowered)
+        assertEquals(result, cachedSecond)
         assertEquals("secret-gemini-key", capturedKey)
         assertEquals("Jaket Flanel Kotak", result.suggestedName)
         assertEquals(ClothingCategory.OUTER_WEAR, result.category)
@@ -92,6 +99,38 @@ class GeminiVisionClothingClassifierTest {
         assertEquals(Occasion.WORK, result.occasion)
         assertEquals(0.93f, result.confidence, 0.001f)
         assertEquals(sampleNavyColor, result.dominantColor)
+    }
+
+    @Test
+    fun candidateEndpoints_prioritizeEvergreenGeminiFlashLiteAndFallbacksOnAiStudio() {
+        val transport = HttpGeminiVisionTransport()
+        val endpoints = transport.candidateEndpoints
+
+        assertTrue(endpoints.isNotEmpty())
+        assertEquals(
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-lite-latest:generateContent",
+            endpoints.first()
+        )
+        assertTrue(endpoints.all { it.startsWith("https://generativelanguage.googleapis.com/v1beta/models/") })
+        assertTrue(endpoints.size >= 2)
+    }
+
+    @Test
+    fun classify_neutralPixelColorRefinedByAiColorHint() = runTest {
+        val ambiguousGray = HsvColor(0f, 0.05f, 0.45f, "Abu-abu")
+        val classifier = GeminiVisionClothingClassifier(
+            apiKey = "secret-key",
+            transport = { _, _, _ ->
+                """{"suggestedName":"Kaos Merah","category":"TOP_WEAR","colorName":"Merah","material":"Katun","pattern":"SOLID","occasion":"HANGOUT","confidence":0.9}"""
+            },
+            ioDispatcher = UnconfinedTestDispatcher(testScheduler),
+            base64Encoder = { Base64.getEncoder().encodeToString(it) },
+            colorFromBytes = { ambiguousGray }
+        )
+
+        val result = classifier.classify(sampleBytes).getOrThrow()
+        assertTrue(result.isAiPowered)
+        assertEquals("Merah", result.dominantColor.colorName)
     }
 
     @Test
@@ -104,6 +143,7 @@ class GeminiVisionClothingClassifierTest {
             colorFromBytes = { sampleNavyColor }
         )
         val networkFallback = networkFailureClassifier.classify(sampleBytes).getOrThrow()
+        assertFalse(networkFallback.isAiPowered)
         assertEquals("Pakaian Biru dongker", networkFallback.suggestedName)
 
         val badJsonClassifier = GeminiVisionClothingClassifier(
@@ -114,6 +154,7 @@ class GeminiVisionClothingClassifierTest {
             colorFromBytes = { sampleNavyColor }
         )
         val badJsonFallback = badJsonClassifier.classify(sampleBytes).getOrThrow()
+        assertFalse(badJsonFallback.isAiPowered)
         assertEquals("Pakaian Biru dongker", badJsonFallback.suggestedName)
         assertEquals("Katun", badJsonFallback.material)
     }
