@@ -250,6 +250,10 @@ fun AuraAppShell() {
 
             override fun onOpenClothingCamera() {
                 val activePage = manageViewModel.uiState.value.page
+                if (currentDestination == AuraDestination.MANAGE_CLOTHES && activePage == ManageClothesPage.CAMERA) {
+                    manageViewModel.requestVoiceCapture()
+                    return
+                }
                 if (activePage != ManageClothesPage.FORM && activePage != ManageClothesPage.ADD_GUIDE) {
                     manageViewModel.openAddGuide()
                 }
@@ -413,6 +417,7 @@ fun AuraAppShell() {
                 onSave = manageViewModel::saveForm,
                 onBackToList = manageViewModel::returnToList,
                 onEditSelected = { manageState.selectedItem?.let(manageViewModel::openEditForm) },
+                onMarkWornToday = manageViewModel::markSelectedAsWornToday,
                 onToggleTorch = manageViewModel::toggleScannerTorch,
                 onToggleCameraFacing = manageViewModel::toggleScannerCameraFacing,
                 onToggleVoiceGuidance = manageViewModel::toggleScannerVoiceGuidance,
