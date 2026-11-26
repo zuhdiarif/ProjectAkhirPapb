@@ -1,6 +1,9 @@
 package com.zuhdiarifazizi.projectakhirpapb
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.net.Uri
@@ -28,10 +31,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.zuhdiarifazizi.projectakhirpapb.data.classifier.DefaultClothingClassifier
 import com.zuhdiarifazizi.projectakhirpapb.data.feedback.AndroidHapticFeedbackManager
 import com.zuhdiarifazizi.projectakhirpapb.data.feedback.AndroidTextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.data.local.AuraDatabase
+import com.zuhdiarifazizi.projectakhirpapb.data.nfc.AndroidNfcTagReader
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.DefaultActivityCategoryRepository
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.InMemoryOutfitRepository
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.RoomClothesRepository
@@ -56,6 +64,7 @@ import com.zuhdiarifazizi.projectakhirpapb.ui.pickoutfit.PickOutfitScreen
 import com.zuhdiarifazizi.projectakhirpapb.ui.pickoutfit.PickOutfitViewModel
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.ProjectAkhirPapbTheme
 import com.zuhdiarifazizi.projectakhirpapb.ui.voice.VoiceViewModel
+import java.io.ByteArrayOutputStream
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -93,15 +102,48 @@ fun AuraAppShell() {
         )
     }
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val activity = remember(context) { context.findActivity() }
+    val nfcTagReader = remember(context) { AndroidNfcTagReader(context) }
+    val classifier = remember {
+        DefaultClothingClassifier(apiKey = BuildConfig.GEMINI_API_KEY)
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             voiceInteractionManager.cleanup()
         }
     }
 
+    DisposableEffect(lifecycleOwner, activity, nfcTagReader) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_RESUME -> activity?.let(nfcTagReader::enableReader)
+                Lifecycle.Event.ON_PAUSE -> activity?.let(nfcTagReader::disableReader)
+                else -> Unit
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        if (lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+            activity?.let(nfcTagReader::enableReader)
+        }
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            activity?.let(nfcTagReader::disableReader)
+        }
+    }
+
     val authViewModel: AuthViewModel = viewModel { AuthViewModel() }
     val manageViewModel: ManageClothesViewModel = viewModel {
-        ManageClothesViewModel(clothesRepository, photoStorage, ttsManager, hapticManager)
+        ManageClothesViewModel(
+            clothesRepository = clothesRepository,
+            photoStorage = photoStorage,
+            ttsManager = ttsManager,
+            hapticManager = hapticManager,
+            classifier = classifier,
+            nfcTagReader = nfcTagReader,
+            photoByteReader = { uriString -> readSafeImageBytes(context, uriString) }
+        )
     }
     val pickOutfitViewModel: PickOutfitViewModel = viewModel {
         PickOutfitViewModel(
@@ -130,22 +172,34 @@ fun AuraAppShell() {
     val authState by authViewModel.uiState.collectAsState()
 
     var currentDestination by remember { mutableStateOf(AuraDestination.AUTH) }
+    var pendingFindCameraMode by remember { mutableStateOf(false) }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
-        if (granted) manageViewModel.openCamera() else manageViewModel.onCameraPermissionDenied()
+        if (granted) {
+            manageViewModel.openCamera(findMode = pendingFindCameraMode)
+        } else {
+            manageViewModel.onCameraPermissionDenied()
+        }
+        pendingFindCameraMode = false
     }
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri: Uri? -> manageViewModel.selectGalleryPhoto(uri?.toString()) }
 
-    val requestCameraAccess = {
+    val requestCameraAccess: (Boolean) -> Unit = { findMode ->
         val hasCamera = context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)
+        pendingFindCameraMode = findMode
         when {
-            !hasCamera -> manageViewModel.onCameraUnavailable()
-            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED ->
-                manageViewModel.openCamera()
+            !hasCamera -> {
+                pendingFindCameraMode = false
+                manageViewModel.onCameraUnavailable()
+            }
+            ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED -> {
+                pendingFindCameraMode = false
+                manageViewModel.openCamera(findMode = findMode)
+            }
             else -> cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
@@ -190,14 +244,22 @@ fun AuraAppShell() {
             }
 
             override fun onAddClothing() {
-                manageViewModel.openAddForm()
+                manageViewModel.openAddGuide()
                 currentDestination = AuraDestination.MANAGE_CLOTHES
             }
 
             override fun onOpenClothingCamera() {
-                if (manageState.page != ManageClothesPage.FORM) manageViewModel.openAddForm()
+                val activePage = manageViewModel.uiState.value.page
+                if (activePage != ManageClothesPage.FORM && activePage != ManageClothesPage.ADD_GUIDE) {
+                    manageViewModel.openAddGuide()
+                }
                 currentDestination = AuraDestination.MANAGE_CLOTHES
-                requestCameraAccess()
+                requestCameraAccess(false)
+            }
+
+            override fun onScanRfid() {
+                manageViewModel.openScanFind()
+                currentDestination = AuraDestination.MANAGE_CLOTHES
             }
 
             override fun onListenRecommendations() {
@@ -259,7 +321,7 @@ fun AuraAppShell() {
         bottomBar = {
             if (currentDestination != AuraDestination.AUTH &&
                 currentDestination != AuraDestination.REGISTER &&
-                !(currentDestination == AuraDestination.MANAGE_CLOTHES && manageState.page == ManageClothesPage.CAMERA)
+                !(currentDestination == AuraDestination.MANAGE_CLOTHES && manageState.page != ManageClothesPage.LIST)
             ) {
                 AuraBottomNavigation(
                     currentDestination = currentDestination,
@@ -317,26 +379,45 @@ fun AuraAppShell() {
                 uiState = manageState,
                 isVoiceListening = homeState.isVoiceListening,
                 onVoiceClick = onVoiceActionClick,
-                onAdd = manageViewModel::openAddForm,
+                onProfileClick = {
+                    authViewModel.showLogin()
+                    currentDestination = AuraDestination.AUTH
+                },
+                onAddGuide = manageViewModel::openAddGuide,
+                onAddManual = manageViewModel::openAddForm,
+                onScanFind = manageViewModel::openScanFind,
+                onSpeakOverview = manageViewModel::speakWardrobeOverview,
+                onSpeakItem = manageViewModel::speakItemSummary,
                 onItemDetails = manageViewModel::openDetails,
                 onEdit = manageViewModel::openEditForm,
                 onSearchChange = manageViewModel::onSearchChange,
                 onCategoryFilter = manageViewModel::setCategoryFilter,
-                onRequestDelete = manageViewModel::requestDeleteConfirmation,
+                onRequestDelete = { manageViewModel.requestDeleteConfirmation(it) },
                 onCancelDelete = manageViewModel::cancelDelete,
                 onConfirmDelete = manageViewModel::confirmDelete,
                 onFormBack = manageViewModel::cancelForm,
                 onNameChange = manageViewModel::onNameChange,
+                onMaterialChange = manageViewModel::onMaterialChange,
                 onCategoryChange = manageViewModel::onCategoryChange,
                 onPatternChange = manageViewModel::onPatternChange,
                 onOccasionChange = manageViewModel::onOccasionChange,
                 onColorChange = manageViewModel::onColorChange,
-                onCameraClick = requestCameraAccess,
+                onCameraClick = { requestCameraAccess(false) },
+                onFindCameraClick = { requestCameraAccess(true) },
                 onGalleryClick = openClothingGallery,
                 onRemovePhoto = manageViewModel::removeSelectedPhoto,
+                onBindRfidClick = manageViewModel::startRfidBindingInForm,
+                onCancelRfidBind = manageViewModel::cancelRfidBindingInForm,
+                onClearRfid = manageViewModel::clearRfidInForm,
+                onSimulateRfidTap = manageViewModel::simulateRfidTap,
                 onSave = manageViewModel::saveForm,
                 onBackToList = manageViewModel::returnToList,
                 onEditSelected = { manageState.selectedItem?.let(manageViewModel::openEditForm) },
+                onToggleTorch = manageViewModel::toggleScannerTorch,
+                onToggleCameraFacing = manageViewModel::toggleScannerCameraFacing,
+                onToggleVoiceGuidance = manageViewModel::toggleScannerVoiceGuidance,
+                onSpeakCameraInstruction = manageViewModel::speakCurrentScannerInstruction,
+                onScannerFrameEvaluated = manageViewModel::onScannerFrameEvaluated,
                 onCameraReady = manageViewModel::onCameraReady,
                 onCameraUnavailable = manageViewModel::onCameraUnavailable,
                 onCameraCaptureFailed = manageViewModel::onCameraCaptureFailed,
@@ -368,4 +449,31 @@ fun AuraAppShell() {
             )
         }
     }
+}
+
+private tailrec fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
+private fun readSafeImageBytes(context: Context, uriString: String): ByteArray {
+    val parsed = Uri.parse(uriString)
+    val scheme = parsed.scheme?.lowercase()
+    if (scheme != "content" && scheme != "file") return ByteArray(0)
+    return runCatching {
+        context.contentResolver.openInputStream(parsed)?.use { input ->
+            val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+            val out = ByteArrayOutputStream()
+            var total = 0
+            while (true) {
+                val read = input.read(buffer)
+                if (read <= 0) break
+                total += read
+                if (total > 15 * 1024 * 1024) return@use ByteArray(0)
+                out.write(buffer, 0, read)
+            }
+            out.toByteArray()
+        } ?: ByteArray(0)
+    }.getOrDefault(ByteArray(0))
 }

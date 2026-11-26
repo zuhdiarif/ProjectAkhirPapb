@@ -17,6 +17,9 @@ interface ClothingDao {
     @Query("SELECT * FROM clothing_items WHERE id = :itemId LIMIT 1")
     suspend fun getById(itemId: String): ClothingEntity?
 
+    @Query("SELECT * FROM clothing_items WHERE rfidTagUid = :rfidTagUid LIMIT 1")
+    suspend fun getByRfidTag(rfidTagUid: String): ClothingEntity?
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(item: ClothingEntity)
 

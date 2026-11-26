@@ -4,10 +4,14 @@ import com.zuhdiarifazizi.projectakhirpapb.domain.classifier.ClassificationResul
 import com.zuhdiarifazizi.projectakhirpapb.domain.classifier.ClothingClassifier
 
 class DefaultClothingClassifier(
-    private val hsvColorExtractor: HsvColorExtractor = HsvColorExtractor()
+    apiKey: String = "",
+    hsvColorExtractor: HsvColorExtractor = HsvColorExtractor(),
+    private val delegate: ClothingClassifier = GeminiVisionClothingClassifier(
+        apiKey = apiKey,
+        hsvColorExtractor = hsvColorExtractor
+    )
 ) : ClothingClassifier {
 
-    override suspend fun classify(imageBytes: ByteArray): Result<ClassificationResult> {
-        return Result.failure(NotImplementedError("Clothing classifier not implemented"))
-    }
+    override suspend fun classify(imageBytes: ByteArray): Result<ClassificationResult> =
+        delegate.classify(imageBytes)
 }
