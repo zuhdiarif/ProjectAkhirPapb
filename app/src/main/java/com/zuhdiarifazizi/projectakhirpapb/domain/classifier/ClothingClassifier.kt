@@ -12,7 +12,8 @@ data class ClassificationResult(
     val occasion: Occasion,
     val dominantColor: HsvColor,
     val confidence: Float,
-    val material: String = "Katun Halus"
+    val material: String = "Katun Halus",
+    val isAiPowered: Boolean = false
 )
 
 interface ClothingClassifier {

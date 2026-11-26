@@ -54,14 +54,32 @@ class RoomClothesRepository(private val database: AuraDatabase) : ClothesReposit
     private suspend fun ensureDemoSeeded() = initializationMutex.withLock {
         database.withTransaction {
             val metadataDao = database.appMetadataDao()
+            val clothingDao = database.clothingDao()
             if (metadataDao.getValue(DEMO_SEED_MARKER) == null) {
-                database.clothingDao().insertAll(DemoClothingCatalog.items.map(ClothingItem::toEntity))
+                clothingDao.insertAll(DemoClothingCatalog.items.map(ClothingItem::toEntity))
                 metadataDao.insert(AppMetadataEntity(DEMO_SEED_MARKER, "done"))
+            }
+            if (metadataDao.getValue(DEMO_ENRICH_V2_MARKER) == null) {
+                DemoClothingCatalog.items.forEach { demo ->
+                    val existing = clothingDao.getById(demo.id) ?: return@forEach
+                    val needsMaterial = existing.material.isBlank() && demo.material.isNotBlank()
+                    val needsLastWorn = existing.lastWornEpochMillis == null && demo.lastWornEpochMillis != null
+                    if (needsMaterial || needsLastWorn) {
+                        clothingDao.upsert(
+                            existing.copy(
+                                material = if (needsMaterial) demo.material else existing.material,
+                                lastWornEpochMillis = existing.lastWornEpochMillis ?: demo.lastWornEpochMillis
+                            )
+                        )
+                    }
+                }
+                metadataDao.insert(AppMetadataEntity(DEMO_ENRICH_V2_MARKER, "done"))
             }
         }
     }
 
     private companion object {
         const val DEMO_SEED_MARKER = "demo_clothing_seed_v1"
+        const val DEMO_ENRICH_V2_MARKER = "demo_clothing_enrich_v2"
     }
 }

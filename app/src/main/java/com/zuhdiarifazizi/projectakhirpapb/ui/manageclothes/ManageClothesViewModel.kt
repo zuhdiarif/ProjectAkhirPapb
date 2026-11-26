@@ -500,6 +500,26 @@ class ManageClothesViewModel(
         speakItem(item)
     }
 
+    fun markSelectedAsWornToday() {
+        val current = _uiState.value.selectedItem ?: return
+        val updated = current.copy(lastWornEpochMillis = System.currentTimeMillis())
+        viewModelScope.launch {
+            runCatching { clothesRepository.upsertClothing(updated) }
+                .onSuccess {
+                    hapticManager.performSuccess()
+                    _uiState.update {
+                        it.copy(
+                            selectedItem = updated,
+                            statusMessage = "${updated.name} ditandai dipakai hari ini.",
+                            errorMessage = null
+                        )
+                    }
+                    ttsManager.speak("${updated.name} ditandai dipakai hari ini.")
+                }
+                .onFailure { announceError("Gagal memperbarui waktu pemakaian.") }
+        }
+    }
+
     fun saveForm() {
         val current = _uiState.value
         val name = SecurityInputValidator.sanitizeText(current.form.name, maxLength = 60)
@@ -643,6 +663,7 @@ class ManageClothesViewModel(
             classifier.classify(bytes).fold(
                 onSuccess = { result ->
                     val optionName = nearestColorOptionName(result.dominantColor)
+                    val sourcePrefix = if (result.isAiPowered) "AI Gemini mendeteksi" else "Deteksi warna lokal"
                     _uiState.update { current ->
                         val nextName = current.form.name.ifBlank { result.suggestedName }
                         current.copy(
@@ -658,12 +679,12 @@ class ManageClothesViewModel(
                                 nameError = null,
                                 colorError = null
                             ),
-                            statusMessage = "Terdeteksi: $nextName (${result.dominantColor.colorName}, ${result.material})."
+                            statusMessage = "$sourcePrefix: $nextName (${result.dominantColor.colorName}, ${result.material})."
                         )
                     }
                     hapticManager.performSuccess()
                     ttsManager.speak(
-                        "Terdeteksi ${result.suggestedName}, kategori ${result.category.displayName}, " +
+                        "$sourcePrefix ${result.suggestedName}, kategori ${result.category.displayName}, " +
                             "warna ${result.dominantColor.colorName}, bahan ${result.material}. " +
                             "Silakan periksa lalu tekan Simpan Pakaian."
                     )

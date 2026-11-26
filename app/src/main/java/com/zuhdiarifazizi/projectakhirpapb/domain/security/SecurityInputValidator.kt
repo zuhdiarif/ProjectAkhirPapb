@@ -11,6 +11,7 @@ object SecurityInputValidator {
     private val NFC_UID_COLON_REGEX = Regex("^([0-9A-F]{2}:){3,9}[0-9A-F]{2}$")
     private val NFC_UID_COMPACT_REGEX = Regex("^[0-9A-F]{8,20}$")
     private val GOOGLE_API_KEY_REGEX = Regex("AIza[0-9A-Za-z_\\-]{20,}")
+    private val VERTEX_API_KEY_REGEX = Regex("AQ\\.[0-9A-Za-z_\\-]{20,}")
     private val GITHUB_TOKEN_REGEX = Regex("(ghp_[0-9A-Za-z]{20,}|github_pat_[0-9A-Za-z_]{20,})")
     private val BEARER_TOKEN_REGEX = Regex("Bearer\\s+[A-Za-z0-9._\\-]+", RegexOption.IGNORE_CASE)
 
@@ -52,6 +53,7 @@ object SecurityInputValidator {
 
     fun redactSecrets(message: String): String = message
         .replace(GOOGLE_API_KEY_REGEX, "[REDACTED_KEY]")
+        .replace(VERTEX_API_KEY_REGEX, "[REDACTED_KEY]")
         .replace(GITHUB_TOKEN_REGEX, "[REDACTED_TOKEN]")
         .replace(BEARER_TOKEN_REGEX, "Bearer [REDACTED]")
 }
