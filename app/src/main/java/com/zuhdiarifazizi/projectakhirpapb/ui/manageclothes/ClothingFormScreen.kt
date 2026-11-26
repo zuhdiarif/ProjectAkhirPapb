@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,9 +20,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory
@@ -231,10 +234,17 @@ private fun <T> ChoiceGroup(
         Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         FlowRow(horizontalArrangement = Arrangement.spacedBy(AuraSpacing.xs), verticalArrangement = Arrangement.spacedBy(AuraSpacing.xs)) {
             choices.forEach { (value, label) ->
+                val isSelected = selectedLabel == label
                 FilterChip(
-                    selected = selectedLabel == label,
+                    selected = isSelected,
                     onClick = { onSelect(value) },
-                    label = { Text(label) }
+                    label = { Text(label) },
+                    modifier = Modifier
+                        .defaultMinSize(minHeight = 48.dp)
+                        .semantics {
+                            stateDescription = if (isSelected) "Terpilih" else "Tidak terpilih"
+                            contentDescription = "$title: $label"
+                        }
                 )
             }
         }

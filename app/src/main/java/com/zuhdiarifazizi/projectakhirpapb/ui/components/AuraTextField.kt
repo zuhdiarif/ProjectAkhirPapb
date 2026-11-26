@@ -8,6 +8,8 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.error
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.VisualTransformation
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraBodyTextStyle
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraHelperTextStyle
@@ -32,7 +34,11 @@ fun AuraTextField(
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics {
+                if (errorMessage != null) error(errorMessage)
+            },
         enabled = enabled,
         singleLine = singleLine,
         keyboardOptions = keyboardOptions,

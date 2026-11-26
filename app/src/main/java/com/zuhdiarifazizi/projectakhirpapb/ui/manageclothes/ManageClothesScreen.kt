@@ -52,7 +52,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -386,7 +388,12 @@ private fun ClothesList(
                             onClick = onSpeakOverview,
                             shape = RoundedCornerShape(8.dp),
                             color = AuraSurfaceTint,
-                            modifier = Modifier.defaultMinSize(minHeight = 40.dp)
+                            modifier = Modifier
+                                .defaultMinSize(minHeight = 48.dp)
+                                .semantics {
+                                    contentDescription = "Nyalakan ringkasan suara lemari pakaian"
+                                    role = Role.Button
+                                }
                         ) {
                             Row(
                                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
@@ -583,7 +590,9 @@ private fun ClothesList(
                 Surface(
                     color = AuraTipCardBg,
                     shape = RoundedCornerShape(12.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics(mergeDescendants = true) {}
                 ) {
                     Row(
                         modifier = Modifier.padding(16.dp),
@@ -637,7 +646,13 @@ private fun CategoryFilterPill(
         onClick = onClick,
         shape = CircleShape,
         color = if (selected) AuraNavy else Color(0xFFF2F3FF),
-        modifier = Modifier.defaultMinSize(minHeight = 44.dp)
+        modifier = Modifier
+            .defaultMinSize(minHeight = 48.dp)
+            .semantics {
+                role = Role.Tab
+                this.selected = selected
+                stateDescription = if (selected) "Filter aktif" else "Tidak aktif"
+            }
     ) {
         Box(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -732,7 +747,7 @@ private fun FigmaClothingItemCard(
                             IconButton(
                                 onClick = { menuExpanded = true },
                                 modifier = Modifier
-                                    .size(36.dp)
+                                    .size(48.dp)
                                     .semantics { contentDescription = "Menu opsi ${item.name}" }
                             ) {
                                 Icon(
@@ -805,6 +820,10 @@ private fun FigmaClothingItemCard(
                     modifier = Modifier
                         .weight(1f)
                         .defaultMinSize(minHeight = 48.dp)
+                        .semantics {
+                            contentDescription = "Dengarkan deskripsi ${item.name}, ${item.category.displayName}, warna ${item.color.colorName}"
+                            role = Role.Button
+                        }
                 ) {
                     Row(
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 12.dp),
@@ -835,7 +854,7 @@ private fun FigmaClothingItemCard(
                     modifier = Modifier
                         .size(48.dp)
                         .semantics {
-                            contentDescription = "Buka detail ${item.name}"
+                            contentDescription = "Buka detail lengkap ${item.name}"
                             role = Role.Button
                         }
                 ) {

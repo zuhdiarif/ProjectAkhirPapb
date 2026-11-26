@@ -197,6 +197,10 @@ class ManageClothesViewModelUnitTest {
         assertNotNull(viewModel.uiState.value.matchedScanItem)
 
         val target = viewModel.uiState.value.items.first()
+        viewModel.speakItemSummary(target)
+        assertEquals("Membacakan deskripsi ${target.name}.", viewModel.uiState.value.statusMessage)
+        assertTrue(tts.lastSpeech.orEmpty().contains(target.name))
+
         viewModel.openDetails(target)
         viewModel.markSelectedAsWornToday()
         assertNotNull(viewModel.uiState.value.selectedItem?.lastWornEpochMillis)

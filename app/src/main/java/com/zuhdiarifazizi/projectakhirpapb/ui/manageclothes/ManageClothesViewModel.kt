@@ -831,6 +831,12 @@ class ManageClothesViewModel(
     }
 
     private fun speakItem(item: ClothingItem) {
+        _uiState.update {
+            it.copy(
+                statusMessage = "Membacakan deskripsi ${item.name}.",
+                errorMessage = null
+            )
+        }
         val materialText = if (item.material.isNotBlank()) "Bahan ${item.material}. " else ""
         val rfidText = if (!item.rfidTagUid.isNullOrBlank()) "Terhubung ke tag RFID. " else ""
         ttsManager.speak(
