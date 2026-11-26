@@ -62,12 +62,14 @@ class SecurityInputValidatorTest {
     @Test
     fun redactSecrets_masksGoogleKeysGithubTokensAndBearerTokens() {
         val sampleGoogleKey = "AIza" + "SyDummyKey12345678901234567890"
+        val sampleVertexKey = "AQ." + "Ab8DummyVertexKey123456789012345"
         val sampleGitHubPat = "ghp_" + "1234567890abcdefghijklmnop"
-        val rawError = "Request failed key=$sampleGoogleKey token=$sampleGitHubPat auth=Bearer secret.jwt.token"
+        val rawError = "Request failed key=$sampleGoogleKey vertex=$sampleVertexKey token=$sampleGitHubPat auth=Bearer secret.jwt.token"
 
         val redacted = SecurityInputValidator.redactSecrets(rawError)
 
         assertFalse(redacted.contains(sampleGoogleKey))
+        assertFalse(redacted.contains(sampleVertexKey))
         assertFalse(redacted.contains(sampleGitHubPat))
         assertFalse(redacted.contains("secret.jwt.token"))
         assertTrue(redacted.contains("[REDACTED_KEY]"))
