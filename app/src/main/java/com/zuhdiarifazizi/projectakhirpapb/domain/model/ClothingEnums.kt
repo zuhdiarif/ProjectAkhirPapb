@@ -1,24 +1,24 @@
 package com.zuhdiarifazizi.projectakhirpapb.domain.model
 
 enum class ClothingCategory(val displayName: String) {
-    TOP_WEAR("Top Wear"),
-    BOTTOM_WEAR("Bottom Wear"),
-    OUTER_WEAR("Outer Wear")
+    TOP_WEAR("Atasan"),
+    BOTTOM_WEAR("Bawahan"),
+    OUTER_WEAR("Pakaian luar")
 }
 
 enum class Occasion(val displayName: String) {
-    WORK("Work"),
-    HANGOUT("Hangout"),
-    EXERCISE("Exercise"),
+    WORK("Kerja"),
+    HANGOUT("Nongkrong"),
+    EXERCISE("Olahraga"),
     STREETWEAR("Streetwear"),
-    OTHER("Other")
+    OTHER("Lainnya")
 }
 
 enum class ClothingPattern(val displayName: String) {
-    SOLID("Solid"),
-    STRIPED("Striped"),
-    PLAID("Plaid"),
-    FLORAL("Floral"),
-    GRAPHIC("Graphic"),
-    OTHER("Other")
+    SOLID("Polos"),
+    STRIPED("Bergaris"),
+    PLAID("Kotak-kotak"),
+    FLORAL("Motif bunga"),
+    GRAPHIC("Bergambar"),
+    OTHER("Lainnya")
 }

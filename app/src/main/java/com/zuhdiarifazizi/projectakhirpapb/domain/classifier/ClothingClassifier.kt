@@ -11,7 +11,8 @@ data class ClassificationResult(
     val pattern: ClothingPattern,
     val occasion: Occasion,
     val dominantColor: HsvColor,
-    val confidence: Float
+    val confidence: Float,
+    val material: String = "Katun Halus"
 )
 
 interface ClothingClassifier {
