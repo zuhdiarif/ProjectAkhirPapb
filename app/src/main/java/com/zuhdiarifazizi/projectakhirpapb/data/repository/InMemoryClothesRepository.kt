@@ -36,4 +36,12 @@ class InMemoryClothesRepository(
     override suspend fun deleteClothing(itemId: String) {
         items.value = items.value.filterNot { it.id == itemId }
     }
+
+    override suspend fun seedStarterWardrobe(userId: String) {
+        val existingIds = items.value.map { it.id }.toSet()
+        val missing = DemoClothingCatalog.starterItemsForUser(userId).filterNot { it.id in existingIds }
+        if (missing.isNotEmpty()) {
+            items.value = items.value + missing
+        }
+    }
 }

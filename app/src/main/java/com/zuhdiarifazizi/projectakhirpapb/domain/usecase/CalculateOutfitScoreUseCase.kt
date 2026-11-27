@@ -1,12 +1,15 @@
 package com.zuhdiarifazizi.projectakhirpapb.domain.usecase
 
+import com.zuhdiarifazizi.projectakhirpapb.data.harmony.KotlinProjectHarmonyScorer
+import com.zuhdiarifazizi.projectakhirpapb.domain.harmony.ProjectHarmonyScorer
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingItem
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.OutfitCandidate
-import kotlin.math.abs
 
-class CalculateOutfitScoreUseCase {
+class CalculateOutfitScoreUseCase(
+    private val harmonyScorer: ProjectHarmonyScorer = KotlinProjectHarmonyScorer()
+) {
 
     operator fun invoke(
         clothes: List<ClothingItem>,
@@ -41,14 +44,10 @@ class CalculateOutfitScoreUseCase {
                                 (outer?.let { activityFit(it, targetOccasion) } ?: activityFit(top, targetOccasion)) * 0.2
                             ).coerceIn(0.0, 1.0)
 
-                        val colorScores = mutableListOf(colorFit(top, bottom))
-                        if (outer != null) {
-                            colorScores += colorFit(top, outer)
-                            colorScores += colorFit(bottom, outer)
-                        }
-                        val colorScore = colorScores.average()
+                        val harmony = harmonyScorer.evaluate(top, bottom, outer)
+                        val colorScore = harmony.colorScore
                         val signature = signature(top, bottom, outer)
-                        val historyPenalty = if (signature in recentlyWornSignatures) 0.18 else 0.0
+                        val historyPenalty = if (signature in recentlyWornSignatures) RECENT_HISTORY_PENALTY else 0.0
                         val total = (occasionScore * 0.55 + colorScore * 0.45 - historyPenalty)
                             .coerceIn(0.0, 1.0)
 
@@ -63,10 +62,7 @@ class CalculateOutfitScoreUseCase {
                                 occasionScore = occasionScore,
                                 historyPenalty = historyPenalty,
                                 totalScore = total,
-                                harmonyType = when {
-                                    colorScore >= 0.82 -> "Warna netral atau selaras"
-                                    else -> "Kontras warna yang seimbang"
-                                }
+                                harmonyType = harmony.harmonyType
                             )
                         )
                     }
@@ -84,22 +80,10 @@ class CalculateOutfitScoreUseCase {
         else -> 0.30
     }
 
-    private fun colorFit(first: ClothingItem, second: ClothingItem): Double {
-        val firstNeutral = first.color.saturation < 0.16f || first.color.value < 0.16f
-        val secondNeutral = second.color.saturation < 0.16f || second.color.value < 0.16f
-        if (firstNeutral && secondNeutral) return 0.86
-        if (firstNeutral || secondNeutral) return 0.82
-
-        val rawDifference = abs(first.color.hue - second.color.hue) % 360f
-        val difference = minOf(rawDifference, 360f - rawDifference)
-        return when {
-            difference <= 35f -> 0.95
-            difference >= 145f -> 0.90
-            difference <= 75f -> 0.78
-            else -> 0.62
-        }
-    }
-
     private fun signature(top: ClothingItem, bottom: ClothingItem, outer: ClothingItem?): String =
-        listOfNotNull(top.id, bottom.id, outer?.id).joinToString("|")
+        listOfNotNull(top.id, bottom.id, outer?.id).sorted().joinToString("|")
+
+    companion object {
+        const val RECENT_HISTORY_PENALTY = 0.18
+    }
 }

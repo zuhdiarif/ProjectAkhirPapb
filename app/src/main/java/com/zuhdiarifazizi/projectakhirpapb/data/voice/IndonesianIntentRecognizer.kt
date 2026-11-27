@@ -31,7 +31,16 @@ class IndonesianIntentRecognizer : IntentRecognizer {
 
     private val listenRecommendationKeywords = listOf(
         "dengarkan rekomendasi", "bacakan rekomendasi", "baca rekomendasi",
-        "jelaskan rekomendasi", "dengarkan deskripsi"
+        "jelaskan rekomendasi", "dengarkan deskripsi", "bacakan riwayat",
+        "ringkasan riwayat", "dengarkan riwayat"
+    )
+
+    private val quickLoginKeywords = listOf(
+        "masuk cepat", "tanpa ketik", "akun lokal", "mode tamu", "langsung masuk", "mulai demo"
+    )
+
+    private val logoutKeywords = listOf(
+        "keluar akun", "logout", "keluar dari akun"
     )
 
     private val continueRecommendationKeywords = listOf(
@@ -134,6 +143,12 @@ class IndonesianIntentRecognizer : IntentRecognizer {
         }
         if (matchesAny(normalized, scanRfidKeywords)) {
             return VoiceCommand.ScanRfid
+        }
+        if (matchesAny(normalized, quickLoginKeywords)) {
+            return VoiceCommand.QuickLogin
+        }
+        if (matchesAny(normalized, logoutKeywords)) {
+            return VoiceCommand.LogoutAccount
         }
 
         // 3. Navigation commands: Home, History, Wardrobe, Back

@@ -254,5 +254,14 @@ private fun imageResource(assetName: String?): Int? = when (assetName) {
     "demo_outer_denim" -> R.drawable.demo_outer_denim
     "demo_outer_cardigan_cream" -> R.drawable.demo_outer_cardigan_cream
     "demo_outer_bomber_black" -> R.drawable.demo_outer_bomber_black
+    "demo_sport_jersey_blue" -> R.drawable.demo_sport_jersey_blue
+    "demo_sport_jogger_black" -> R.drawable.demo_sport_jogger_black
+    "demo_sport_windbreaker_sage" -> R.drawable.demo_sport_windbreaker_sage
+    "demo_other_batik_brown" -> R.drawable.demo_other_batik_brown
+    "demo_other_trousers_charcoal" -> R.drawable.demo_other_trousers_charcoal
+    "demo_work_striped_lightblue" -> R.drawable.demo_work_striped_lightblue
+    "demo_hangout_flannel_maroon" -> R.drawable.demo_hangout_flannel_maroon
+    "demo_street_graphic_mustard" -> R.drawable.demo_street_graphic_mustard
+    "demo_hangout_chino_terracotta" -> R.drawable.demo_hangout_chino_terracotta
     else -> null
 }

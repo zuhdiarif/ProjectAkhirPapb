@@ -35,11 +35,13 @@ fun OutfitResultScreen(
     candidate: OutfitCandidate,
     recommendationNumber: Int,
     recommendationCount: Int,
+    isSavedToHistory: Boolean = false,
     isVoiceListening: Boolean,
     partialTranscript: String = "",
     onBack: () -> Unit,
     onVoiceClick: () -> Unit,
     onSpeak: () -> Unit,
+    onConfirmWear: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -84,7 +86,7 @@ fun OutfitResultScreen(
                 Text(
                     text = "Aktivitas: ${candidate.occasion.displayName}. " +
                         "Kecocokan aktivitas ${fitLabel(candidate.occasionScore)}. " +
-                        "Warna ${candidate.harmonyType.lowercase()}, nilai kecocokan ${percent(candidate.colorScore)} persen.",
+                        "${candidate.harmonyType}, nilai kecocokan ${percent(candidate.colorScore)} persen.",
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Text(
@@ -102,14 +104,30 @@ fun OutfitResultScreen(
             color = AuraCardSelectedBg
         ) {
             Text(
-                text = "Pilihan ini hanya disimpan sementara selama sesi aplikasi. Belum tersimpan permanen atau masuk ke Riwayat.",
+                text = if (isSavedToHistory) {
+                    "Tersimpan ke Riwayat & Rotasi Pakaian. Frekuensi pemakaian baju telah diperbarui."
+                } else {
+                    "Mode pratinjau detail. Tekan tombol Pakai & Simpan ke Riwayat di bawah untuk mencatat pemakaian hari ini."
+                },
                 modifier = Modifier.padding(AuraSpacing.md),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }
 
-        AuraPrimaryButton(
+        if (!isSavedToHistory) {
+            AuraPrimaryButton(
+                text = "Pakai & Simpan ke Riwayat",
+                onClick = onConfirmWear,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics {
+                        contentDescription = "Pakai dan simpan ${outfitName(candidate)} ke Riwayat"
+                    }
+            )
+        }
+
+        AuraSecondaryButton(
             text = "Dengarkan Deskripsi",
             onClick = onSpeak,
             modifier = Modifier
@@ -131,9 +149,9 @@ private fun outfitName(candidate: OutfitCandidate): String = buildString {
 
 private fun explanation(candidate: OutfitCandidate): String = when {
     candidate.occasionScore >= 0.8 ->
-        "Alasan pemilihan: kategori pakaian cocok untuk ${candidate.occasion.displayName.lowercase()} dan ${candidate.harmonyType.lowercase()}."
+        "Alasan pemilihan: kategori pakaian cocok untuk ${candidate.occasion.displayName.lowercase()} dengan ${candidate.harmonyType.lowercase()}."
     candidate.occasion == com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion.EXERCISE ->
-        "Alasan pemilihan: ini pilihan terdekat dari koleksi demo. Belum ada pakaian olahraga khusus."
+        "Alasan pemilihan: ini pilihan terdekat dari koleksi yang tersedia."
     else ->
         "Alasan pemilihan: rekomendasi dihitung dari kategori aktivitas, kategori atasan dan bawahan, serta kecocokan warna pakaian yang tersedia."
 }

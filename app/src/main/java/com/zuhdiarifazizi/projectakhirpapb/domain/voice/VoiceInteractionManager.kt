@@ -24,6 +24,8 @@ interface VoiceNavigationCallback {
     fun onAddClothing() {}
     fun onOpenClothingCamera() {}
     fun onScanRfid() {}
+    fun onQuickLogin() {}
+    fun onLogoutAccount() {}
 }
 
 class VoiceInteractionManager(
@@ -342,6 +344,18 @@ class VoiceInteractionManager(
                 _state.update { it.copy(status = VoiceSessionStatus.SUCCESS, feedbackMessage = "Membuka pemindai RFID dan AI") }
                 if (navigationCallback != null) navigationCallback.onScanRfid()
                 else ttsManager.speak("Membuka pemindai RFID untuk mengenali pakaian Anda.")
+            }
+            is VoiceCommand.QuickLogin -> {
+                hapticManager.performSuccess()
+                _state.update { it.copy(status = VoiceSessionStatus.SUCCESS, feedbackMessage = "Masuk cepat ke Beranda") }
+                if (navigationCallback != null) navigationCallback.onQuickLogin()
+                else ttsManager.speak("Membuka Beranda Aura dengan akun lokal.")
+            }
+            is VoiceCommand.LogoutAccount -> {
+                hapticManager.performButtonClick()
+                _state.update { it.copy(status = VoiceSessionStatus.SUCCESS, feedbackMessage = "Keluar dari akun") }
+                if (navigationCallback != null) navigationCallback.onLogoutAccount()
+                else ttsManager.speak("Keluar dari akun.")
             }
             is VoiceCommand.CancelAction -> {
                 cancelListening()

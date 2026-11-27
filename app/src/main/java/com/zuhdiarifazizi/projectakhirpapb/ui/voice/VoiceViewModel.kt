@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.zuhdiarifazizi.projectakhirpapb.data.feedback.AndroidHapticFeedbackManager
 import com.zuhdiarifazizi.projectakhirpapb.data.feedback.AndroidTextToSpeechManager
+import com.zuhdiarifazizi.projectakhirpapb.data.nfc.AndroidNfcTagReader
 import com.zuhdiarifazizi.projectakhirpapb.data.voice.AndroidSpeechRecognizerManager
 import com.zuhdiarifazizi.projectakhirpapb.data.voice.IndonesianIntentRecognizer
 import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceInteractionManager
@@ -18,6 +19,7 @@ class VoiceViewModel(
     val ttsManager: AndroidTextToSpeechManager,
     val hapticManager: AndroidHapticFeedbackManager,
     val speechRecognizerManager: AndroidSpeechRecognizerManager,
+    val nfcTagReader: AndroidNfcTagReader,
     intentRecognizer: IndonesianIntentRecognizer = IndonesianIntentRecognizer()
 ) : ViewModel() {
 

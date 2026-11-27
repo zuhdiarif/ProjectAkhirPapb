@@ -10,6 +10,8 @@ enum class VoiceIntentType {
     SELECT_SPORT,
     SELECT_STREETWEAR,
     SELECT_OTHER,
+    QUICK_LOGIN,
+    LOGOUT_ACCOUNT,
     OPEN_HOME,
     OPEN_HISTORY,
     OPEN_WARDROBE,
@@ -33,6 +35,8 @@ sealed class VoiceCommand(val type: VoiceIntentType) {
     data object SelectSport : VoiceCommand(VoiceIntentType.SELECT_SPORT)
     data object SelectStreetwear : VoiceCommand(VoiceIntentType.SELECT_STREETWEAR)
     data object SelectOther : VoiceCommand(VoiceIntentType.SELECT_OTHER)
+    data object QuickLogin : VoiceCommand(VoiceIntentType.QUICK_LOGIN)
+    data object LogoutAccount : VoiceCommand(VoiceIntentType.LOGOUT_ACCOUNT)
     data object OpenHome : VoiceCommand(VoiceIntentType.OPEN_HOME)
     data object OpenHistory : VoiceCommand(VoiceIntentType.OPEN_HISTORY)
     data object OpenWardrobe : VoiceCommand(VoiceIntentType.OPEN_WARDROBE)
@@ -56,6 +60,8 @@ sealed class VoiceCommand(val type: VoiceIntentType) {
             is SelectSport -> VoiceIntent.SelectOccasion(Occasion.EXERCISE)
             is SelectStreetwear -> VoiceIntent.SelectOccasion(Occasion.STREETWEAR)
             is SelectOther -> VoiceIntent.SelectOccasion(Occasion.OTHER)
+            is QuickLogin -> VoiceIntent.Navigate(VoiceDestination.HOME)
+            is LogoutAccount -> VoiceIntent.GoBack
             is OpenHome -> VoiceIntent.Navigate(VoiceDestination.HOME)
             is OpenHistory -> VoiceIntent.Navigate(VoiceDestination.HISTORY)
             is OpenWardrobe -> VoiceIntent.Navigate(VoiceDestination.MANAGE_CLOTHES)
