@@ -135,6 +135,7 @@ fun ManageClothesScreen(
     onRetakePhoto: () -> Unit,
     onCancelCamera: () -> Unit,
     createCameraFile: () -> File,
+    onSeedStarterWardrobe: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     when (uiState.page) {
@@ -153,6 +154,7 @@ fun ManageClothesScreen(
             onDelete = onRequestDelete,
             onSearchChange = onSearchChange,
             onCategoryFilter = onCategoryFilter,
+            onSeedStarterWardrobe = onSeedStarterWardrobe,
             modifier = modifier
         )
 
@@ -291,6 +293,7 @@ private fun ClothesList(
     onDelete: (ClothingItem) -> Unit,
     onSearchChange: (String) -> Unit,
     onCategoryFilter: (ClothingCategory?) -> Unit,
+    onSeedStarterWardrobe: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -595,9 +598,25 @@ private fun ClothesList(
             } else if (visible.isEmpty()) {
                 item {
                     AuraCard(modifier = Modifier.fillMaxWidth()) {
-                        Column(verticalArrangement = Arrangement.spacedBy(AuraSpacing.xs)) {
-                            Text("Belum ada pakaian yang cocok.", fontWeight = FontWeight.SemiBold)
-                            Text("Tekan + Tambah baju baru untuk mulai mendigitalkan lemari Anda.")
+                        Column(verticalArrangement = Arrangement.spacedBy(AuraSpacing.sm)) {
+                            Text(
+                                text = if (uiState.items.isEmpty()) "Belum ada pakaian tersimpan." else "Belum ada pakaian yang cocok.",
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            Text(
+                                text = if (uiState.items.isEmpty()) {
+                                    "Tekan Tambah baju baru atau muat koleksi pakaian contoh siap pakai."
+                                } else {
+                                    "Ubah kata kunci pencarian atau pilih filter kategori Semua."
+                                }
+                            )
+                            if (uiState.items.isEmpty()) {
+                                AuraPrimaryButton(
+                                    text = "Muat Koleksi Contoh Siap Pakai",
+                                    onClick = onSeedStarterWardrobe,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         }
                     }
                 }

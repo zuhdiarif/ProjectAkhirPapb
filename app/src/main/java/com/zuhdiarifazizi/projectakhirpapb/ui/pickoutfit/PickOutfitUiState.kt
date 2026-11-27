@@ -15,6 +15,7 @@ data class PickOutfitUiState(
     val step: PickOutfitStep = PickOutfitStep.CATEGORY_SELECTION,
     val selectedOccasion: Occasion? = null,
     val availableClothes: List<ClothingItem> = emptyList(),
+    val recentlyWornSignatures: Set<String> = emptySet(),
     val selectedCategories: Set<ClothingCategory> = setOf(
         ClothingCategory.TOP_WEAR,
         ClothingCategory.BOTTOM_WEAR
@@ -22,6 +23,7 @@ data class PickOutfitUiState(
     val candidates: List<OutfitCandidate> = emptyList(),
     val currentCandidateIndex: Int = 0,
     val selectedCandidate: OutfitCandidate? = null,
+    val isSavedToHistory: Boolean = false,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val statusMessage: String? = null

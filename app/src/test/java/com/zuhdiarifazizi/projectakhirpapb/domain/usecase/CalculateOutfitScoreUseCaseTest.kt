@@ -58,4 +58,23 @@ class CalculateOutfitScoreUseCaseTest {
         assertTrue(useCase(onlyTop, Occasion.WORK, requiredCategories).isEmpty())
         assertTrue(useCase(DemoClothingCatalog.items, Occasion.WORK, setOf(ClothingCategory.TOP_WEAR)).isEmpty())
     }
+
+    @Test
+    fun recentlyWornOutfitAppliesHistoryPenaltyWithSortedIdSignature() {
+        val top = DemoClothingCatalog.items.first { it.id == "demo_shirt_navy" }
+        val bottom = DemoClothingCatalog.items.first { it.id == "demo_chinos_cream" }
+        val sortedSignature = listOf(top.id, bottom.id).sorted().joinToString("|")
+
+        val baseline = useCase(listOf(top, bottom), Occasion.WORK, requiredCategories).single()
+        val penalized = useCase(
+            clothes = listOf(top, bottom),
+            targetOccasion = Occasion.WORK,
+            selectedCategories = requiredCategories,
+            recentlyWornSignatures = setOf(sortedSignature)
+        ).single()
+
+        assertEquals(0.0, baseline.historyPenalty, 0.0001)
+        assertEquals(CalculateOutfitScoreUseCase.RECENT_HISTORY_PENALTY, penalized.historyPenalty, 0.0001)
+        assertTrue(penalized.totalScore < baseline.totalScore)
+    }
 }

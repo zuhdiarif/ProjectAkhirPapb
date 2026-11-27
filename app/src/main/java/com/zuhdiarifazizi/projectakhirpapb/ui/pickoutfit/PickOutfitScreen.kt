@@ -44,6 +44,7 @@ fun PickOutfitScreen(
     onSpeakRecommendation: (Int) -> Unit,
     onViewDetails: (Int) -> Unit,
     onChooseRecommendation: (Int) -> Unit,
+    onConfirmWearResult: () -> Unit = {},
     onSpeakResult: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -78,11 +79,13 @@ fun PickOutfitScreen(
                 candidate = candidate,
                 recommendationNumber = uiState.currentCandidateIndex + 1,
                 recommendationCount = uiState.candidates.size,
+                isSavedToHistory = uiState.isSavedToHistory,
                 isVoiceListening = isVoiceListening,
                 partialTranscript = partialTranscript,
                 onBack = onBackStep,
                 onVoiceClick = onVoiceClick,
                 onSpeak = onSpeakResult,
+                onConfirmWear = onConfirmWearResult,
                 modifier = modifier
             )
         } ?: CategorySelectionContent(

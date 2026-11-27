@@ -172,6 +172,9 @@ class IndonesianIntentRecognizerTest {
         assertTrue(recognizer.recognize("Kembali ke beranda").let { it is VoiceCommand.OpenHome })
         assertTrue(recognizer.recognize("Kembali").let { it is VoiceCommand.NavigateBack })
         assertTrue(recognizer.recognize("Halaman sebelumnya").let { it is VoiceCommand.NavigateBack })
+        assertTrue(recognizer.recognize("Masuk cepat").let { it is VoiceCommand.QuickLogin })
+        assertTrue(recognizer.recognize("Keluar akun").let { it is VoiceCommand.LogoutAccount })
+        assertTrue(recognizer.recognize("Bacakan riwayat").let { it is VoiceCommand.ListenRecommendations })
     }
 
     @Test

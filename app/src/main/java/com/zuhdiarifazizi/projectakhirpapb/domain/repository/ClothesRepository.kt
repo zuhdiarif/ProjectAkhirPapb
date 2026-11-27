@@ -10,4 +10,5 @@ interface ClothesRepository {
     suspend fun getClothingByRfid(rfidTagUid: String): ClothingItem? = null
     suspend fun upsertClothing(item: ClothingItem)
     suspend fun deleteClothing(itemId: String)
+    suspend fun seedStarterWardrobe(userId: String) {}
 }
