@@ -37,4 +37,10 @@ interface AppMetadataDao {
 
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(entity: AppMetadataEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun upsert(entity: AppMetadataEntity)
+
+    @Query("DELETE FROM app_metadata WHERE `key` = :key")
+    suspend fun deleteByKey(key: String)
 }

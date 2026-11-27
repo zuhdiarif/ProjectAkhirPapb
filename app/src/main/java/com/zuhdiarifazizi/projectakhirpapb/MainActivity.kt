@@ -23,16 +23,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,18 +55,23 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.zuhdiarifazizi.projectakhirpapb.data.classifier.DefaultClothingClassifier
 import com.zuhdiarifazizi.projectakhirpapb.data.feedback.AndroidHapticFeedbackManager
 import com.zuhdiarifazizi.projectakhirpapb.data.feedback.AndroidTextToSpeechManager
+import com.zuhdiarifazizi.projectakhirpapb.data.harmony.AndroidProjectHarmonyScorer
 import com.zuhdiarifazizi.projectakhirpapb.data.local.AuraDatabase
 import com.zuhdiarifazizi.projectakhirpapb.data.nfc.AndroidNfcTagReader
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.DefaultActivityCategoryRepository
-import com.zuhdiarifazizi.projectakhirpapb.data.repository.InMemoryOutfitRepository
+import com.zuhdiarifazizi.projectakhirpapb.data.repository.DemoClothingCatalog
+import com.zuhdiarifazizi.projectakhirpapb.data.repository.RoomAuthRepository
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.RoomClothesRepository
+import com.zuhdiarifazizi.projectakhirpapb.data.repository.RoomOutfitRepository
 import com.zuhdiarifazizi.projectakhirpapb.data.storage.ClothingPhotoStorage
 import com.zuhdiarifazizi.projectakhirpapb.data.voice.AndroidSpeechRecognizerManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
+import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.CalculateOutfitScoreUseCase
 import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceNavigationCallback
 import com.zuhdiarifazizi.projectakhirpapb.ui.auth.AuthScreen
 import com.zuhdiarifazizi.projectakhirpapb.ui.auth.AuthViewModel
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraBottomNavigation
+import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraProfileDialog
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraSpeakingBanner
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.FeedbackBanner
 import com.zuhdiarifazizi.projectakhirpapb.ui.history.HistoryScreen
@@ -88,6 +91,7 @@ import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraSpacing
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.ProjectAkhirPapbTheme
 import com.zuhdiarifazizi.projectakhirpapb.ui.voice.VoiceViewModel
 import java.io.ByteArrayOutputStream
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -101,7 +105,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AuraAppShell() {
     val context = LocalContext.current
@@ -109,26 +112,35 @@ fun AuraAppShell() {
     val clothesDatabase = remember { AuraDatabase.getInstance(context.applicationContext) }
     val photoStorage = remember { ClothingPhotoStorage(context.applicationContext) }
     val clothesRepository = remember(clothesDatabase) { RoomClothesRepository(clothesDatabase) }
-    val outfitRepository = remember { InMemoryOutfitRepository() }
+    val outfitRepository = remember(clothesDatabase) { RoomOutfitRepository(clothesDatabase) }
+    val authRepository = remember(clothesDatabase) { RoomAuthRepository(clothesDatabase) }
     val categoryRepository = remember { DefaultActivityCategoryRepository() }
+    val activeUserIdFlow = remember { MutableStateFlow(DemoClothingCatalog.USER_ID) }
 
     val voiceViewModel: VoiceViewModel = viewModel {
         val appContext = context.applicationContext
         VoiceViewModel(
             ttsManager = AndroidTextToSpeechManager(appContext),
             hapticManager = AndroidHapticFeedbackManager(appContext),
-            speechRecognizerManager = AndroidSpeechRecognizerManager(appContext)
+            speechRecognizerManager = AndroidSpeechRecognizerManager(appContext),
+            nfcTagReader = AndroidNfcTagReader(appContext)
         )
     }
     val ttsManager = voiceViewModel.ttsManager
     val hapticManager = voiceViewModel.hapticManager
     val voiceInteractionManager = voiceViewModel.voiceInteractionManager
+    val nfcTagReader = voiceViewModel.nfcTagReader
 
     val lifecycleOwner = LocalLifecycleOwner.current
     val activity = remember(context) { context.findActivity() }
-    val nfcTagReader = remember(context) { AndroidNfcTagReader(context) }
     val classifier = remember {
         DefaultClothingClassifier(apiKey = BuildConfig.GEMINI_API_KEY)
+    }
+    val harmonyScorer = remember {
+        AndroidProjectHarmonyScorer(context.applicationContext)
+    }
+    DisposableEffect(harmonyScorer) {
+        onDispose { harmonyScorer.close() }
     }
 
     DisposableEffect(lifecycleOwner, activity, nfcTagReader) {
@@ -149,7 +161,13 @@ fun AuraAppShell() {
         }
     }
 
-    val authViewModel: AuthViewModel = viewModel { AuthViewModel() }
+    val authViewModel: AuthViewModel = viewModel {
+        AuthViewModel(
+            authRepository = authRepository,
+            ttsManager = ttsManager,
+            hapticManager = hapticManager
+        )
+    }
     val manageViewModel: ManageClothesViewModel = viewModel {
         ManageClothesViewModel(
             clothesRepository = clothesRepository,
@@ -158,18 +176,28 @@ fun AuraAppShell() {
             hapticManager = hapticManager,
             classifier = classifier,
             nfcTagReader = nfcTagReader,
-            photoByteReader = { uriString -> readSafeImageBytes(context.applicationContext, uriString) }
+            photoByteReader = { uriString -> readSafeImageBytes(context.applicationContext, uriString) },
+            userIdFlow = activeUserIdFlow
         )
     }
     val pickOutfitViewModel: PickOutfitViewModel = viewModel {
         PickOutfitViewModel(
             clothesRepository = clothesRepository,
             ttsManager = ttsManager,
-            hapticManager = hapticManager
+            hapticManager = hapticManager,
+            calculateOutfitScoreUseCase = CalculateOutfitScoreUseCase(harmonyScorer = harmonyScorer),
+            outfitRepository = outfitRepository,
+            userIdProvider = { activeUserIdFlow.value }
         )
     }
     val historyViewModel: HistoryViewModel = viewModel {
-        HistoryViewModel(clothesRepository, outfitRepository)
+        HistoryViewModel(
+            clothesRepository = clothesRepository,
+            outfitRepository = outfitRepository,
+            ttsManager = ttsManager,
+            hapticManager = hapticManager,
+            userIdFlow = activeUserIdFlow
+        )
     }
     val homeViewModel: HomeViewModel = viewModel {
         HomeViewModel(
@@ -192,6 +220,19 @@ fun AuraAppShell() {
     val activeSpeechText by ttsManager.currentSpeechFlow.collectAsState()
 
     var pendingFindCameraMode by remember { mutableStateOf(false) }
+    var showProfileDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(authState.isSessionLoading, authState.currentUser) {
+        val signedInUser = authState.currentUser
+        if (signedInUser != null) {
+            activeUserIdFlow.value = signedInUser.id
+            if (currentDestination == AuraDestination.AUTH || currentDestination == AuraDestination.REGISTER) {
+                voiceViewModel.navigateTo(AuraDestination.HOME)
+            }
+        } else if (!authState.isSessionLoading) {
+            activeUserIdFlow.value = DemoClothingCatalog.USER_ID
+        }
+    }
 
     val cameraPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -247,23 +288,58 @@ fun AuraAppShell() {
         }
     }
 
+    val ensureSignedInForNavigation: () -> Boolean = {
+        if (authViewModel.uiState.value.currentUser == null) {
+            authViewModel.loginQuickAccess {
+                voiceViewModel.navigateTo(AuraDestination.HOME)
+            }
+            false
+        } else {
+            true
+        }
+    }
+
     val voiceNavigationCallback = remember {
         object : VoiceNavigationCallback {
+            override fun onQuickLogin() {
+                authViewModel.loginQuickAccess {
+                    voiceViewModel.navigateTo(AuraDestination.HOME)
+                }
+            }
+
+            override fun onLogoutAccount() {
+                showProfileDialog = false
+                authViewModel.logout {
+                    voiceViewModel.navigateTo(AuraDestination.AUTH)
+                }
+            }
+
             override fun onSelectOccasion(occasion: Occasion) {
+                if (authViewModel.uiState.value.currentUser == null) {
+                    authViewModel.loginQuickAccess()
+                }
                 homeViewModel.selectCategoryByOccasion(occasion, announceTts = false)
                 pickOutfitViewModel.beginSelection(occasion, queueFollowUpSpeech = true)
                 voiceViewModel.navigateTo(AuraDestination.PICK_OUTFIT)
             }
 
             override fun onOpenHome() {
-                voiceViewModel.navigateTo(AuraDestination.HOME)
+                if (ensureSignedInForNavigation()) {
+                    voiceViewModel.navigateTo(AuraDestination.HOME)
+                }
             }
 
             override fun onOpenHistory() {
+                if (authViewModel.uiState.value.currentUser == null) {
+                    authViewModel.loginQuickAccess()
+                }
                 voiceViewModel.navigateTo(AuraDestination.HISTORY)
             }
 
             override fun onOpenWardrobe() {
+                if (authViewModel.uiState.value.currentUser == null) {
+                    authViewModel.loginQuickAccess()
+                }
                 if (manageViewModel.uiState.value.page != ManageClothesPage.LIST) {
                     manageViewModel.returnToList()
                 }
@@ -275,7 +351,6 @@ fun AuraAppShell() {
                     AuraDestination.REGISTER -> {
                         authViewModel.showLogin()
                         voiceViewModel.navigateTo(AuraDestination.AUTH)
-                        ttsManager.speak("Kembali ke halaman masuk.")
                     }
                     AuraDestination.MANAGE_CLOTHES -> {
                         val activePage = manageViewModel.uiState.value.page
@@ -309,11 +384,17 @@ fun AuraAppShell() {
             }
 
             override fun onAddClothing() {
+                if (authViewModel.uiState.value.currentUser == null) {
+                    authViewModel.loginQuickAccess()
+                }
                 manageViewModel.openAddGuide(queueFollowUpSpeech = true)
                 voiceViewModel.navigateTo(AuraDestination.MANAGE_CLOTHES)
             }
 
             override fun onOpenClothingCamera() {
+                if (authViewModel.uiState.value.currentUser == null) {
+                    authViewModel.loginQuickAccess()
+                }
                 val activeDest = voiceViewModel.currentDestination.value
                 val activeManageState = manageViewModel.uiState.value
                 if (activeDest == AuraDestination.MANAGE_CLOTHES && activeManageState.page == ManageClothesPage.CAMERA) {
@@ -332,6 +413,9 @@ fun AuraAppShell() {
             }
 
             override fun onScanRfid() {
+                if (authViewModel.uiState.value.currentUser == null) {
+                    authViewModel.loginQuickAccess()
+                }
                 manageViewModel.openScanFind(queueFollowUpSpeech = true)
                 voiceViewModel.navigateTo(AuraDestination.MANAGE_CLOTHES)
             }
@@ -369,6 +453,12 @@ fun AuraAppShell() {
                 val activePickState = pickOutfitViewModel.uiState.value
                 val activeManageState = manageViewModel.uiState.value
                 when {
+                    activeDest == AuraDestination.AUTH || activeDest == AuraDestination.REGISTER -> {
+                        authViewModel.speakAuthGuidance()
+                    }
+                    activeDest == AuraDestination.HISTORY -> {
+                        historyViewModel.speakHistoryAndRotationSummary()
+                    }
                     activeDest == AuraDestination.PICK_OUTFIT && activePickState.step == PickOutfitStep.RESULT -> {
                         pickOutfitViewModel.speakSelectedResult()
                     }
@@ -391,7 +481,7 @@ fun AuraAppShell() {
                         pickOutfitViewModel.speakCurrentRecommendationByVoice()
                     }
                     else -> {
-                        ttsManager.speak("Buka halaman rekomendasi atau lemari pakaian untuk mendengarkan deskripsi.")
+                        ttsManager.speak("Buka halaman rekomendasi, riwayat, atau lemari pakaian untuk mendengarkan deskripsi.")
                     }
                 }
             }
@@ -435,25 +525,13 @@ fun AuraAppShell() {
         }
     }
 
+    val openProfileDialog = {
+        hapticManager.performButtonClick()
+        showProfileDialog = true
+    }
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        topBar = {
-            if (currentDestination != AuraDestination.AUTH &&
-                currentDestination != AuraDestination.REGISTER &&
-                currentDestination != AuraDestination.HOME &&
-                currentDestination != AuraDestination.PICK_OUTFIT &&
-                currentDestination != AuraDestination.MANAGE_CLOTHES
-            ) {
-                TopAppBar(
-                    title = { Text(currentDestination.label) },
-                    navigationIcon = {
-                        TextButton(onClick = { voiceViewModel.navigateTo(AuraDestination.HOME) }) {
-                            Text("Back")
-                        }
-                    }
-                )
-            }
-        },
         bottomBar = {
             if (currentDestination != AuraDestination.AUTH &&
                 currentDestination != AuraDestination.REGISTER &&
@@ -478,18 +556,16 @@ fun AuraAppShell() {
                 currentSpeech = activeSpeechText,
                 onStop = ttsManager::stop
             )
-            if (currentDestination != AuraDestination.AUTH && currentDestination != AuraDestination.REGISTER) {
-                if (voiceState.isListening && voiceState.lastTranscript.isNotBlank()) {
-                    VoiceLiveTranscriptBanner(transcript = voiceState.lastTranscript)
-                }
-                if (currentDestination != AuraDestination.HOME) {
-                    globalFeedbackBanner?.let { banner ->
-                        FeedbackBanner(
-                            feedback = banner,
-                            onDismiss = voiceViewModel::dismissGlobalBanner,
-                            modifier = Modifier.padding(horizontal = AuraSpacing.md, vertical = 4.dp)
-                        )
-                    }
+            if (voiceState.isListening && voiceState.lastTranscript.isNotBlank()) {
+                VoiceLiveTranscriptBanner(transcript = voiceState.lastTranscript)
+            }
+            if (currentDestination != AuraDestination.HOME) {
+                globalFeedbackBanner?.let { banner ->
+                    FeedbackBanner(
+                        feedback = banner,
+                        onDismiss = voiceViewModel::dismissGlobalBanner,
+                        modifier = Modifier.padding(horizontal = AuraSpacing.md, vertical = 4.dp)
+                    )
                 }
             }
             Box(
@@ -501,13 +577,22 @@ fun AuraAppShell() {
                 when (currentDestination) {
                     AuraDestination.AUTH, AuraDestination.REGISTER -> AuthScreen(
                         uiState = authState,
+                        isVoiceListening = voiceState.isListening,
+                        partialTranscript = voiceState.lastTranscript,
+                        onVoiceClick = onVoiceActionClick,
+                        onSpeakGuidance = authViewModel::speakAuthGuidance,
                         onNameChange = authViewModel::onNameChange,
                         onEmailChange = authViewModel::onEmailChange,
                         onPasswordChange = authViewModel::onPasswordChange,
                         onConfirmPasswordChange = authViewModel::onConfirmPasswordChange,
                         onTogglePasswordVisibility = authViewModel::togglePasswordVisibility,
                         onToggleConfirmPasswordVisibility = authViewModel::toggleConfirmPasswordVisibility,
-                        onSubmit = authViewModel::submitForm,
+                        onSubmit = {
+                            authViewModel.submitForm { user ->
+                                activeUserIdFlow.value = user.id
+                                voiceViewModel.navigateTo(AuraDestination.HOME)
+                            }
+                        },
                         onShowRegister = {
                             authViewModel.showRegister()
                             voiceViewModel.navigateTo(AuraDestination.REGISTER)
@@ -516,7 +601,12 @@ fun AuraAppShell() {
                             authViewModel.showLogin()
                             voiceViewModel.navigateTo(AuraDestination.AUTH)
                         },
-                        onContinueAsDemo = { voiceViewModel.navigateTo(AuraDestination.HOME) },
+                        onContinueAsDemo = {
+                            authViewModel.loginQuickAccess { user ->
+                                activeUserIdFlow.value = user.id
+                                voiceViewModel.navigateTo(AuraDestination.HOME)
+                            }
+                        },
                         modifier = screenModifier
                     )
                     AuraDestination.HOME -> HomeScreen(
@@ -537,10 +627,7 @@ fun AuraAppShell() {
                         onDismissBanner = {
                             homeViewModel.dismissFeedbackBanner()
                         },
-                        onProfileClick = {
-                            authViewModel.showLogin()
-                            voiceViewModel.navigateTo(AuraDestination.AUTH)
-                        },
+                        onProfileClick = openProfileDialog,
                         partialTranscript = voiceState.lastTranscript,
                         modifier = screenModifier
                     )
@@ -549,10 +636,7 @@ fun AuraAppShell() {
                         isVoiceListening = voiceState.isListening,
                         partialTranscript = voiceState.lastTranscript,
                         onVoiceClick = onVoiceActionClick,
-                        onProfileClick = {
-                            authViewModel.showLogin()
-                            voiceViewModel.navigateTo(AuraDestination.AUTH)
-                        },
+                        onProfileClick = openProfileDialog,
                         onAddGuide = { manageViewModel.openAddGuide() },
                         onAddManual = manageViewModel::openAddForm,
                         onScanFind = { manageViewModel.openScanFind() },
@@ -597,6 +681,7 @@ fun AuraAppShell() {
                         onRetakePhoto = manageViewModel::retakePhoto,
                         onCancelCamera = manageViewModel::cancelCamera,
                         createCameraFile = photoStorage::createCameraOutputFile,
+                        onSeedStarterWardrobe = manageViewModel::seedStarterWardrobe,
                         modifier = screenModifier
                     )
                     AuraDestination.PICK_OUTFIT -> PickOutfitScreen(
@@ -612,6 +697,7 @@ fun AuraAppShell() {
                         onSpeakRecommendation = pickOutfitViewModel::speakRecommendation,
                         onViewDetails = pickOutfitViewModel::viewRecommendationDetails,
                         onChooseRecommendation = { pickOutfitViewModel.chooseRecommendation(it) },
+                        onConfirmWearResult = { pickOutfitViewModel.confirmSelectedCandidate() },
                         onSpeakResult = pickOutfitViewModel::speakSelectedResult,
                         modifier = screenModifier
                     )
@@ -620,11 +706,49 @@ fun AuraAppShell() {
                         isVoiceListening = voiceState.isListening,
                         partialTranscript = voiceState.lastTranscript,
                         onVoiceClick = onVoiceActionClick,
+                        onProfileClick = openProfileDialog,
+                        onSpeakSummary = { historyViewModel.speakHistoryAndRotationSummary() },
+                        onSpeakHistoryEntry = historyViewModel::speakHistoryEntry,
+                        onDeleteHistoryEntry = historyViewModel::deleteHistoryEntry,
+                        onSpeakRotationRecommendation = historyViewModel::speakRotationRecommendation,
+                        onGoToPickOutfit = { voiceViewModel.navigateTo(AuraDestination.HOME) },
+                        onRequestClearHistory = historyViewModel::requestClearHistory,
+                        onCancelClearHistory = historyViewModel::cancelClearHistory,
+                        onConfirmClearHistory = historyViewModel::confirmClearHistory,
                         modifier = screenModifier
                     )
                 }
             }
         }
+    }
+
+    if (showProfileDialog) {
+        val currentUser = authState.currentUser
+        AuraProfileDialog(
+            user = currentUser,
+            wardrobeCount = manageState.items.size,
+            historyCount = historyState.historyEntries.size,
+            onSpeakSummary = {
+                val name = currentUser?.name ?: "Pengguna Lokal Aura"
+                val email = currentUser?.email ?: "lokal@aura.id"
+                ttsManager.speak(
+                    "Akun aktif: $name, email $email. Tersimpan ${manageState.items.size} pakaian di lemari " +
+                        "dan ${historyState.historyEntries.size} catatan riwayat dalam tiga puluh hari terakhir."
+                )
+            },
+            onSeedStarterWardrobe = {
+                manageViewModel.seedStarterWardrobe()
+                showProfileDialog = false
+            },
+            onLogout = {
+                showProfileDialog = false
+                authViewModel.logout {
+                    activeUserIdFlow.value = DemoClothingCatalog.USER_ID
+                    voiceViewModel.navigateTo(AuraDestination.AUTH)
+                }
+            },
+            onDismiss = { showProfileDialog = false }
+        )
     }
 }
 

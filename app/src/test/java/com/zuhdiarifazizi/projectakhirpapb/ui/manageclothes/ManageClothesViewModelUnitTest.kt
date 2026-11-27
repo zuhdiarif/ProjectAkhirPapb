@@ -90,7 +90,7 @@ class ManageClothesViewModelUnitTest {
     fun initialCollection_loadsFiltersAndSpeaksOverview() = runTest {
         viewModel.uiState.test {
             val state = awaitItem()
-            assertEquals(13, state.items.size)
+            assertEquals(DemoClothingCatalog.items.size, state.items.size)
             assertFalse(state.isLoading)
             assertTrue(state.isNfcSupported)
         }
@@ -104,7 +104,7 @@ class ManageClothesViewModelUnitTest {
         assertTrue(viewModel.uiState.value.visibleItems.all { it.name.contains("Denim", ignoreCase = true) })
 
         viewModel.speakWardrobeOverview()
-        assertTrue(tts.lastSpeech.orEmpty().contains("13 pakaian"))
+        assertTrue(tts.lastSpeech.orEmpty().contains("${DemoClothingCatalog.items.size} pakaian"))
     }
 
     @Test
@@ -163,7 +163,7 @@ class ManageClothesViewModelUnitTest {
 
         viewModel.saveForm()
         assertEquals(ManageClothesPage.LIST, viewModel.uiState.value.page)
-        assertEquals(14, viewModel.uiState.value.items.size)
+        assertEquals(DemoClothingCatalog.items.size + 1, viewModel.uiState.value.items.size)
         val savedItem = viewModel.uiState.value.items.first { it.name == "Batik Kerja Eksekutif" }
         assertEquals("04:AB:12:7E", savedItem.rfidTagUid)
 
@@ -216,7 +216,7 @@ class ManageClothesViewModelUnitTest {
         assertTrue(viewModel.uiState.value.showDeleteConfirmation)
         viewModel.confirmDelete()
 
-        assertEquals(12, viewModel.uiState.value.items.size)
+        assertEquals(DemoClothingCatalog.items.size - 1, viewModel.uiState.value.items.size)
         assertFalse(viewModel.uiState.value.items.any { it.id == target.id })
     }
 

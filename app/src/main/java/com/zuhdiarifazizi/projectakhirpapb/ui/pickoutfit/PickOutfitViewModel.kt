@@ -9,8 +9,12 @@ import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.OutfitCandidate
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.OutfitHistory
 import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ClothesRepository
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.OutfitRepository
+import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.AnalyzeOutfitRotationUseCase
 import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.CalculateOutfitScoreUseCase
+import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,13 +25,17 @@ class PickOutfitViewModel(
     private val clothesRepository: ClothesRepository,
     private val ttsManager: TextToSpeechManager? = null,
     private val hapticManager: HapticFeedbackManager? = null,
-    private val calculateOutfitScoreUseCase: CalculateOutfitScoreUseCase = CalculateOutfitScoreUseCase()
+    private val calculateOutfitScoreUseCase: CalculateOutfitScoreUseCase = CalculateOutfitScoreUseCase(),
+    private val outfitRepository: OutfitRepository? = null,
+    private val analyzeOutfitRotationUseCase: AnalyzeOutfitRotationUseCase = AnalyzeOutfitRotationUseCase(),
+    private val userIdProvider: () -> String = { DemoClothingCatalog.USER_ID }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PickOutfitUiState())
     val uiState: StateFlow<PickOutfitUiState> = _uiState.asStateFlow()
 
     fun beginSelection(occasion: Occasion, queueFollowUpSpeech: Boolean = false) {
+        val activeUserId = userIdProvider().ifBlank { DemoClothingCatalog.USER_ID }
         _uiState.update {
             it.copy(
                 step = PickOutfitStep.CATEGORY_SELECTION,
@@ -35,6 +43,7 @@ class PickOutfitViewModel(
                 selectedCategories = REQUIRED_CATEGORIES,
                 candidates = emptyList(),
                 selectedCandidate = null,
+                isSavedToHistory = false,
                 currentCandidateIndex = 0,
                 isLoading = true,
                 errorMessage = null,
@@ -46,9 +55,27 @@ class PickOutfitViewModel(
             queueMode = if (queueFollowUpSpeech) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
         )
         viewModelScope.launch {
-            runCatching { clothesRepository.getClothesByUser(DemoClothingCatalog.USER_ID) }
-                .onSuccess { clothes ->
-                    _uiState.update { it.copy(availableClothes = clothes, isLoading = false) }
+            runCatching {
+                val now = System.currentTimeMillis()
+                val clothes = clothesRepository.getClothesByUser(activeUserId)
+                val history = outfitRepository
+                    ?.getHistorySince(activeUserId, now - THIRTY_DAYS_MILLIS)
+                    .orEmpty()
+                val recentSignatures = analyzeOutfitRotationUseCase(
+                    clothes = clothes,
+                    historyEntries = history,
+                    nowEpochMillis = now
+                ).recentlyWornOutfitSignatures
+                clothes to recentSignatures
+            }
+                .onSuccess { (clothes, recentSignatures) ->
+                    _uiState.update {
+                        it.copy(
+                            availableClothes = clothes,
+                            recentlyWornSignatures = recentSignatures,
+                            isLoading = false
+                        )
+                    }
                     if (clothes.isEmpty()) {
                         announceError("Belum ada pakaian yang tersedia di koleksi.")
                     }
@@ -94,7 +121,8 @@ class PickOutfitViewModel(
         val candidates = calculateOutfitScoreUseCase(
             clothes = current.availableClothes,
             targetOccasion = occasion,
-            selectedCategories = current.selectedCategories
+            selectedCategories = current.selectedCategories,
+            recentlyWornSignatures = current.recentlyWornSignatures
         ).take(MAX_RECOMMENDATIONS)
 
         if (candidates.isEmpty()) {
@@ -108,6 +136,7 @@ class PickOutfitViewModel(
                 candidates = candidates,
                 currentCandidateIndex = 0,
                 selectedCandidate = null,
+                isSavedToHistory = false,
                 errorMessage = null,
                 statusMessage = "Ada ${candidates.size} rekomendasi berdasarkan pakaian yang tersedia."
             )
@@ -157,6 +186,15 @@ class PickOutfitViewModel(
 
     fun chooseRecommendation(index: Int): Boolean = showResult(index, selectedByUser = true)
 
+    fun confirmSelectedCandidate(): Boolean {
+        val current = _uiState.value
+        if (current.selectedCandidate == null) {
+            announceError("Belum ada pakaian yang dipilih.")
+            return false
+        }
+        return showResult(current.currentCandidateIndex, selectedByUser = true)
+    }
+
     fun selectFirstRecommendationByVoice(): Boolean {
         if (_uiState.value.candidates.isEmpty()) {
             announceError("Belum ada rekomendasi. Pilih kategori pakaian dan minta rekomendasi terlebih dahulu.")
@@ -186,7 +224,8 @@ class PickOutfitViewModel(
             return
         }
         hapticManager?.performButtonClick()
-        speak(description(candidate, current.currentCandidateIndex, current.candidates.size) + STORAGE_NOTE)
+        val suffix = if (current.isSavedToHistory) SAVED_NOTE else PREVIEW_NOTE
+        speak(description(candidate, current.currentCandidateIndex, current.candidates.size) + suffix)
     }
 
     fun goToPreviousStep(): Boolean {
@@ -218,15 +257,56 @@ class PickOutfitViewModel(
                 step = PickOutfitStep.RESULT,
                 selectedCandidate = candidate,
                 currentCandidateIndex = index,
-                statusMessage = if (selectedByUser) "Pakaian dipilih untuk sesi ini." else "Detail rekomendasi ${index + 1}."
+                isSavedToHistory = selectedByUser,
+                statusMessage = if (selectedByUser) {
+                    "Pakaian dipilih dan disimpan ke Riwayat."
+                } else {
+                    "Detail rekomendasi ${index + 1}."
+                }
             )
         }
+        if (selectedByUser) {
+            persistChosenOutfit(candidate)
+        }
         hapticManager?.performSuccess()
+        val note = if (selectedByUser) SAVED_NOTE else PREVIEW_NOTE
         speak(
             (if (selectedByUser) "Pakaian dipilih. " else "Detail rekomendasi. ") +
-                description(candidate, index, current.candidates.size) + STORAGE_NOTE
+                description(candidate, index, current.candidates.size) + note
         )
         return true
+    }
+
+    private fun persistChosenOutfit(candidate: OutfitCandidate) {
+        val activeUserId = userIdProvider().ifBlank { DemoClothingCatalog.USER_ID }
+        val wornAt = System.currentTimeMillis()
+        val wornItems = listOfNotNull(candidate.topWear, candidate.bottomWear, candidate.outerWear)
+        val entry = OutfitHistory(
+            id = "hist_${UUID.randomUUID()}",
+            userId = activeUserId,
+            outfitId = candidate.id,
+            items = wornItems.map { it.copy(lastWornEpochMillis = wornAt) },
+            occasion = candidate.occasion,
+            score = candidate.totalScore,
+            wornAtEpochMillis = wornAt
+        )
+        _uiState.update { state ->
+            val wornIds = wornItems.map { it.id }.toSet()
+            state.copy(
+                recentlyWornSignatures = state.recentlyWornSignatures + candidate.id,
+                availableClothes = state.availableClothes.map { item ->
+                    if (item.id in wornIds) item.copy(lastWornEpochMillis = wornAt) else item
+                }
+            )
+        }
+        viewModelScope.launch {
+            runCatching {
+                outfitRepository?.saveOutfitHistory(entry)
+                wornItems.forEach { item ->
+                    clothesRepository.upsertClothing(item.copy(lastWornEpochMillis = wornAt))
+                }
+            }
+        }
     }
 
     private fun description(candidate: OutfitCandidate, index: Int, total: Int): String {
@@ -236,8 +316,13 @@ class PickOutfitViewModel(
         val occasion = candidate.occasion.displayName
         val activityReason = when {
             candidate.occasionScore >= 0.8 -> "Sebagian besar pakaian sesuai untuk aktivitas $occasion."
-            candidate.occasion == Occasion.EXERCISE -> "Koleksi demo belum berisi pakaian olahraga khusus; ini pilihan terdekat dari pakaian yang tersedia."
+            candidate.occasion == Occasion.EXERCISE -> "Ini pilihan alternatif terdekat karena pakaian olahraga khusus belum mencukupi."
             else -> "Kecocokan aktivitas dihitung dari kategori acara setiap pakaian."
+        }
+        val rotationNote = if (candidate.historyPenalty > 0.0) {
+            " Kombinasi ini baru dipakai dalam tujuh hari terakhir sehingga mendapat penyesuaian skor rotasi."
+        } else {
+            ""
         }
         val outerDescription = outer?.let {
             "Pakaian luar: ${it.name}, warna ${it.color.colorName}."
@@ -246,7 +331,7 @@ class PickOutfitViewModel(
             "Atasan: ${top?.name ?: "tidak tersedia"}, warna ${top?.color?.colorName ?: "tidak diketahui"}. " +
             "Bawahan: ${bottom?.name ?: "tidak tersedia"}, warna ${bottom?.color?.colorName ?: "tidak diketahui"}. " +
             "$outerDescription " +
-            "Alasan: $activityReason ${candidate.harmonyType}, nilai kecocokan warna ${candidate.colorScorePercent} persen."
+            "Alasan: $activityReason ${candidate.harmonyType}, nilai kecocokan warna ${candidate.colorScorePercent} persen.$rotationNote"
     }
 
     private fun announceError(message: String) {
@@ -265,6 +350,8 @@ class PickOutfitViewModel(
     private companion object {
         val REQUIRED_CATEGORIES = setOf(ClothingCategory.TOP_WEAR, ClothingCategory.BOTTOM_WEAR)
         const val MAX_RECOMMENDATIONS = 8
-        const val STORAGE_NOTE = " Pilihan ini hanya tersimpan sementara selama sesi aplikasi dan belum disimpan ke riwayat."
+        const val THIRTY_DAYS_MILLIS = 30L * 24L * 60L * 60L * 1000L
+        const val SAVED_NOTE = " Pilihan ini sudah disimpan ke Riwayat & Rotasi Pakaian."
+        const val PREVIEW_NOTE = " Mode pratinjau detail. Tekan Pakai Pakaian Ini untuk menyimpan ke Riwayat."
     }
 }

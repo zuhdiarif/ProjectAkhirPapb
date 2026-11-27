@@ -24,14 +24,17 @@ import java.util.UUID
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ManageClothesViewModel(
     private val clothesRepository: ClothesRepository,
     private val photoStorage: ClothingPhotoStorage,
@@ -41,7 +44,8 @@ class ManageClothesViewModel(
     private val nfcTagReader: NfcTagReader? = null,
     private val matchClothingUseCase: MatchClothingFromWardrobeUseCase = MatchClothingFromWardrobeUseCase(),
     private val photoByteReader: suspend (String) -> ByteArray = { ByteArray(0) },
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val userIdFlow: StateFlow<String> = MutableStateFlow(DemoClothingCatalog.USER_ID)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -54,7 +58,11 @@ class ManageClothesViewModel(
 
     init {
         viewModelScope.launch {
-            clothesRepository.observeClothes(DemoClothingCatalog.USER_ID)
+            userIdFlow
+                .flatMapLatest { rawUserId ->
+                    val uid = rawUserId.ifBlank { DemoClothingCatalog.USER_ID }
+                    clothesRepository.observeClothes(uid)
+                }
                 .catch {
                     _uiState.update { it.copy(isLoading = false) }
                     announceError("Koleksi pakaian belum dapat dimuat.")
@@ -510,6 +518,20 @@ class ManageClothesViewModel(
         speakItem(item)
     }
 
+    fun seedStarterWardrobe() {
+        val uid = userIdFlow.value.ifBlank { DemoClothingCatalog.USER_ID }
+        viewModelScope.launch {
+            runCatching { clothesRepository.seedStarterWardrobe(uid) }
+                .onSuccess {
+                    hapticManager.performSuccess()
+                    announce("Koleksi pakaian contoh telah dimuat ke lemari Anda.")
+                }
+                .onFailure {
+                    announceError("Koleksi contoh belum dapat dimuat.")
+                }
+        }
+    }
+
     fun markSelectedAsWornToday() {
         val current = _uiState.value.selectedItem ?: return
         val updated = current.copy(lastWornEpochMillis = System.currentTimeMillis())
@@ -587,7 +609,7 @@ class ManageClothesViewModel(
 
             val item = ClothingItem(
                 id = existing?.id ?: UUID.randomUUID().toString(),
-                userId = DemoClothingCatalog.USER_ID,
+                userId = existing?.userId ?: userIdFlow.value.ifBlank { DemoClothingCatalog.USER_ID },
                 name = name,
                 category = current.form.category,
                 pattern = current.form.pattern,

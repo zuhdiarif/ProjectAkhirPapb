@@ -154,10 +154,17 @@ private fun RecommendationCard(
             Text(
                 text = "Aktivitas: ${candidate.occasion.displayName}. " +
                     "Kecocokan aktivitas: ${fitLabel(candidate.occasionScore)}. " +
-                    "Kecocokan warna: ${candidate.harmonyType}, ${percent(candidate.colorScore)} persen.",
+                    "${candidate.harmonyType}, ${percent(candidate.colorScore)} persen.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurface
             )
+            if (candidate.historyPenalty > 0.0) {
+                Text(
+                    text = "Baru dipakai dalam 7 hari terakhir • skor rotasi disesuaikan",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
             Text(
                 text = explanation(candidate),
                 style = MaterialTheme.typography.bodySmall,
