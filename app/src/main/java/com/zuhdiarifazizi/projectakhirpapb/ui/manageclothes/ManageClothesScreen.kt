@@ -62,7 +62,10 @@ import androidx.compose.ui.unit.sp
 import com.zuhdiarifazizi.projectakhirpapb.R
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingItem
-import com.zuhdiarifazizi.projectakhirpapb.domain.scanner.ScannerFrameGuidance
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.LumaChromaGrid
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ScannerFrameGuidance
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.TiltState
+import androidx.camera.core.ImageAnalysis
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraCard
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraDestructiveButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraPrimaryButton
@@ -90,8 +93,11 @@ fun ManageClothesScreen(
     isVoiceListening: Boolean,
     partialTranscript: String = "",
     onVoiceClick: () -> Unit,
-    onProfileClick: () -> Unit,
     onAddGuide: () -> Unit,
+    onSpeakAddGuide: () -> Unit = {},
+    onStartRfidAdd: () -> Unit = {},
+    onSpeakRfidAddSteps: () -> Unit = {},
+    onSimulateNewRfidTag: () -> Unit = {},
     onAddManual: () -> Unit,
     onScanFind: () -> Unit,
     onSpeakOverview: () -> Unit,
@@ -135,6 +141,10 @@ fun ManageClothesScreen(
     onRetakePhoto: () -> Unit,
     onCancelCamera: () -> Unit,
     createCameraFile: () -> File,
+    tiltState: TiltState = TiltState(),
+    createFrameAnalyzer: ((LumaChromaGrid) -> Unit) -> ImageAnalysis.Analyzer = {
+        ImageAnalysis.Analyzer { image -> image.close() }
+    },
     onSeedStarterWardrobe: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -144,7 +154,6 @@ fun ManageClothesScreen(
             isVoiceListening = isVoiceListening,
             partialTranscript = partialTranscript,
             onVoiceClick = onVoiceClick,
-            onProfileClick = onProfileClick,
             onAddGuide = onAddGuide,
             onScanFind = onScanFind,
             onSpeakOverview = onSpeakOverview,
@@ -162,11 +171,26 @@ fun ManageClothesScreen(
             isVoiceListening = isVoiceListening,
             partialTranscript = partialTranscript,
             onVoiceClick = onVoiceClick,
+            onSpeakGuide = onSpeakAddGuide,
             onBack = onBackToList,
-            onProfileClick = onProfileClick,
             onStartCamera = onCameraClick,
+            onStartRfidAdd = onStartRfidAdd,
             onPickFromGallery = onGalleryClick,
             onManualForm = onAddManual,
+            modifier = modifier
+        )
+
+        ManageClothesPage.RFID_ADD -> RfidAddScreen(
+            isNfcSupported = uiState.isNfcSupported,
+            isNfcEnabled = uiState.isNfcEnabled,
+            statusMessage = uiState.statusMessage,
+            isVoiceListening = isVoiceListening,
+            partialTranscript = partialTranscript,
+            onVoiceClick = onVoiceClick,
+            onSpeakSteps = onSpeakRfidAddSteps,
+            onBack = onAddGuide,
+            onContinueManualForm = onAddManual,
+            onSimulateNewRfidTag = onSimulateNewRfidTag,
             modifier = modifier
         )
 
@@ -175,6 +199,8 @@ fun ManageClothesScreen(
             captureRequestId = uiState.captureRequestId,
             capturedPhotoUri = uiState.capturedCameraPhotoUri,
             isVoiceListening = isVoiceListening,
+            tiltState = tiltState,
+            createFrameAnalyzer = createFrameAnalyzer,
             onVoiceClick = onVoiceClick,
             onBack = onCancelCamera,
             onOpenGallery = onGalleryClick,
@@ -283,7 +309,6 @@ private fun ClothesList(
     isVoiceListening: Boolean,
     partialTranscript: String,
     onVoiceClick: () -> Unit,
-    onProfileClick: () -> Unit,
     onAddGuide: () -> Unit,
     onScanFind: () -> Unit,
     onSpeakOverview: () -> Unit,
@@ -309,7 +334,7 @@ private fun ClothesList(
                         .height(64.dp)
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.Start
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -334,24 +359,6 @@ private fun ClothesList(
                                 color = AuraHighContrastInk,
                                 fontSize = 20.sp
                             )
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onProfileClick,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .background(AuraNavyDeep, RoundedCornerShape(10.dp))
-                            .semantics {
-                                contentDescription = "Profil pengguna"
-                                role = Role.Button
-                            }
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_profile),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(16.dp)
                         )
                     }
                 }

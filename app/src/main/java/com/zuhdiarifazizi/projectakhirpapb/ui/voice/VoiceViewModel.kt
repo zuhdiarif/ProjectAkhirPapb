@@ -2,12 +2,12 @@ package com.zuhdiarifazizi.projectakhirpapb.ui.voice
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zuhdiarifazizi.projectakhirpapb.data.feedback.AndroidHapticFeedbackManager
-import com.zuhdiarifazizi.projectakhirpapb.data.feedback.AndroidTextToSpeechManager
-import com.zuhdiarifazizi.projectakhirpapb.data.nfc.AndroidNfcTagReader
-import com.zuhdiarifazizi.projectakhirpapb.data.voice.AndroidSpeechRecognizerManager
-import com.zuhdiarifazizi.projectakhirpapb.data.voice.IndonesianIntentRecognizer
-import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceInteractionManager
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.VoiceScreenContext
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.HapticFeedbackManager
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.IntentRecognizer
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.NfcTagReader
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.SpeechRecognizerManager
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.FeedbackMessage
 import com.zuhdiarifazizi.projectakhirpapb.ui.navigation.AuraDestination
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -16,23 +16,25 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class VoiceViewModel(
-    val ttsManager: AndroidTextToSpeechManager,
-    val hapticManager: AndroidHapticFeedbackManager,
-    val speechRecognizerManager: AndroidSpeechRecognizerManager,
-    val nfcTagReader: AndroidNfcTagReader,
-    intentRecognizer: IndonesianIntentRecognizer = IndonesianIntentRecognizer()
+    val ttsManager: TextToSpeechManager,
+    val hapticManager: HapticFeedbackManager,
+    val speechRecognizerManager: SpeechRecognizerManager,
+    val nfcTagReader: NfcTagReader,
+    intentRecognizer: IntentRecognizer,
+    contextProvider: () -> VoiceScreenContext = { VoiceScreenContext() }
 ) : ViewModel() {
 
     val voiceInteractionManager: VoiceInteractionManager = VoiceInteractionManager(
         speechRecognizerManager = speechRecognizerManager,
         intentRecognizer = intentRecognizer,
         ttsManager = ttsManager,
-        hapticManager = hapticManager
+        hapticManager = hapticManager,
+        contextProvider = contextProvider
     )
 
     val state: StateFlow<VoiceInteractionState> = voiceInteractionManager.state
 
-    private val _currentDestination = MutableStateFlow(AuraDestination.AUTH)
+    private val _currentDestination = MutableStateFlow(AuraDestination.ONBOARDING)
     val currentDestination: StateFlow<AuraDestination> = _currentDestination.asStateFlow()
 
     private val _globalFeedbackBanner = MutableStateFlow<FeedbackMessage?>(null)

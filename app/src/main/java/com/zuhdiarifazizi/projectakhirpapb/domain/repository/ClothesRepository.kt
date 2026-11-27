@@ -11,4 +11,9 @@ interface ClothesRepository {
     suspend fun upsertClothing(item: ClothingItem)
     suspend fun deleteClothing(itemId: String)
     suspend fun seedStarterWardrobe(userId: String) {}
+
+    companion object {
+        const val DEFAULT_USER_ID = "aura-demo-user"
+        const val DEMO_RFID_UID = "04:A1:B2:C3:D4"
+    }
 }

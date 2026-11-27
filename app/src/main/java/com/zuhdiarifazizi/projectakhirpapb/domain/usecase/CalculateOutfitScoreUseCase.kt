@@ -1,14 +1,14 @@
 package com.zuhdiarifazizi.projectakhirpapb.domain.usecase
 
-import com.zuhdiarifazizi.projectakhirpapb.data.harmony.KotlinProjectHarmonyScorer
-import com.zuhdiarifazizi.projectakhirpapb.domain.harmony.ProjectHarmonyScorer
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingItem
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.OutfitCandidate
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ProjectHarmonyScorer
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.RuleBasedHarmonyScorer
 
 class CalculateOutfitScoreUseCase(
-    private val harmonyScorer: ProjectHarmonyScorer = KotlinProjectHarmonyScorer()
+    private val harmonyScorer: ProjectHarmonyScorer = RuleBasedHarmonyScorer
 ) {
 
     operator fun invoke(

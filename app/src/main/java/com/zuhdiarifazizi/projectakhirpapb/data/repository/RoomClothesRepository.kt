@@ -8,7 +8,7 @@ import com.zuhdiarifazizi.projectakhirpapb.data.local.toDomain
 import com.zuhdiarifazizi.projectakhirpapb.data.local.toEntity
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingItem
 import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ClothesRepository
-import com.zuhdiarifazizi.projectakhirpapb.domain.security.SecurityInputValidator
+import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.SecurityInputValidator
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow

@@ -1,15 +1,13 @@
 package com.zuhdiarifazizi.projectakhirpapb.ui.history
 
-import android.speech.tts.TextToSpeech
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zuhdiarifazizi.projectakhirpapb.data.repository.DemoClothingCatalog
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.HapticFeedbackManager
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.OutfitHistory
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.RotationRecommendation
 import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ClothesRepository
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.HapticFeedbackManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.repository.OutfitRepository
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.AnalyzeOutfitRotationUseCase
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -30,7 +28,7 @@ class HistoryViewModel(
     private val analyzeOutfitRotationUseCase: AnalyzeOutfitRotationUseCase = AnalyzeOutfitRotationUseCase(),
     private val ttsManager: TextToSpeechManager? = null,
     private val hapticManager: HapticFeedbackManager? = null,
-    private val userIdFlow: StateFlow<String> = MutableStateFlow(DemoClothingCatalog.USER_ID),
+    private val userIdFlow: StateFlow<String> = MutableStateFlow(ClothesRepository.DEFAULT_USER_ID),
     private val nowProvider: () -> Long = { System.currentTimeMillis() }
 ) : ViewModel() {
 
@@ -41,7 +39,7 @@ class HistoryViewModel(
         viewModelScope.launch {
             userIdFlow
                 .flatMapLatest { rawUserId ->
-                    val uid = rawUserId.ifBlank { DemoClothingCatalog.USER_ID }
+                    val uid = rawUserId.ifBlank { ClothesRepository.DEFAULT_USER_ID }
                     combine(
                         clothesRepository.observeClothes(uid),
                         outfitRepository.observeHistory(uid)
@@ -71,7 +69,7 @@ class HistoryViewModel(
     fun speakHistoryAndRotationSummary(queueFollowUpSpeech: Boolean = false) {
         val current = _uiState.value
         hapticManager?.performButtonClick()
-        val mode = if (queueFollowUpSpeech) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+        val mode = if (queueFollowUpSpeech) TextToSpeechManager.QUEUE_ADD else TextToSpeechManager.QUEUE_FLUSH
 
         val historySentence = if (current.historyEntries.isEmpty()) {
             "Belum ada riwayat pemakaian outfit dalam tiga puluh hari terakhir."
@@ -139,12 +137,43 @@ class HistoryViewModel(
         }
     }
 
+    fun speakHistoryByIndex(oneBasedIndex: Int) {
+        val entry = _uiState.value.historyEntries.getOrNull(oneBasedIndex - 1)
+        if (entry == null) {
+            hapticManager?.performError()
+            ttsManager?.speak("Riwayat nomor $oneBasedIndex tidak ditemukan.")
+            return
+        }
+        speakHistoryEntry(entry)
+    }
+
+    fun speakRotationByIndex(oneBasedIndex: Int) {
+        val rec = _uiState.value.rarelyWornItems.getOrNull(oneBasedIndex - 1)
+            ?: _uiState.value.rotationRecommendations.getOrNull(oneBasedIndex - 1)
+        if (rec == null) {
+            hapticManager?.performError()
+            ttsManager?.speak("Rekomendasi rotasi nomor $oneBasedIndex tidak ditemukan.")
+            return
+        }
+        speakRotationRecommendation(rec)
+    }
+
+    fun deleteHistoryByIndex(oneBasedIndex: Int) {
+        val entry = _uiState.value.historyEntries.getOrNull(oneBasedIndex - 1)
+        if (entry == null) {
+            hapticManager?.performError()
+            ttsManager?.speak("Riwayat nomor $oneBasedIndex tidak ditemukan untuk dihapus.")
+            return
+        }
+        deleteHistoryEntry(entry)
+    }
+
     fun requestClearHistory() = _uiState.update { it.copy(showClearConfirmation = true) }
 
     fun cancelClearHistory() = _uiState.update { it.copy(showClearConfirmation = false) }
 
     fun confirmClearHistory() {
-        val uid = userIdFlow.value.ifBlank { DemoClothingCatalog.USER_ID }
+        val uid = userIdFlow.value.ifBlank { ClothesRepository.DEFAULT_USER_ID }
         viewModelScope.launch {
             runCatching { outfitRepository.clearHistory(uid) }
                 .onSuccess {

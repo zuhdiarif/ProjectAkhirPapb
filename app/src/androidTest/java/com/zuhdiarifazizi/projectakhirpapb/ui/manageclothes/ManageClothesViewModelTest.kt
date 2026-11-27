@@ -5,11 +5,12 @@ import android.speech.tts.TextToSpeech
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.zuhdiarifazizi.projectakhirpapb.data.device.ClothingPhotoStorage
 import com.zuhdiarifazizi.projectakhirpapb.data.local.AuraDatabase
+import com.zuhdiarifazizi.projectakhirpapb.data.remote.DefaultClothingClassifier
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.RoomClothesRepository
-import com.zuhdiarifazizi.projectakhirpapb.data.storage.ClothingPhotoStorage
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.HapticFeedbackManager
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.TextToSpeechManager
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.HapticFeedbackManager
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.TextToSpeechManager
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -28,7 +29,7 @@ class ManageClothesViewModelTest {
         val haptics = TestHapticManager()
         try {
             val repository = RoomClothesRepository(database)
-            val viewModel = ManageClothesViewModel(repository, ClothingPhotoStorage(context), tts, haptics)
+            val viewModel = ManageClothesViewModel(repository, ClothingPhotoStorage(context), tts, haptics, DefaultClothingClassifier())
             viewModel.openAddForm()
             viewModel.onNameChange("Kaos Uji Pengguna")
             viewModel.onColorChange("Biru")
@@ -54,7 +55,7 @@ class ManageClothesViewModelTest {
         val haptics = TestHapticManager()
         try {
             val repository = RoomClothesRepository(database)
-            val viewModel = ManageClothesViewModel(repository, ClothingPhotoStorage(context), tts, haptics)
+            val viewModel = ManageClothesViewModel(repository, ClothingPhotoStorage(context), tts, haptics, DefaultClothingClassifier())
             viewModel.openAddForm()
             viewModel.saveForm()
 
@@ -76,7 +77,7 @@ class ManageClothesViewModelTest {
 private class TestTtsManager : TextToSpeechManager {
     override var isSpeaking: Boolean = false
     override var lastSpeech: String? = null
-    override fun speak(text: String, queueMode: Int) { lastSpeech = text }
+    override fun speak(text: String, queueMode: Int, recordInHistory: Boolean) { lastSpeech = text }
     override fun repeatLastSpeech() = Unit
     override fun stop() = Unit
     override fun shutdown() = Unit

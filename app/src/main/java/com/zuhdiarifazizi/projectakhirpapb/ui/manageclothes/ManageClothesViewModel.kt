@@ -1,25 +1,23 @@
 package com.zuhdiarifazizi.projectakhirpapb.ui.manageclothes
 
-import android.speech.tts.TextToSpeech
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zuhdiarifazizi.projectakhirpapb.data.classifier.DefaultClothingClassifier
-import com.zuhdiarifazizi.projectakhirpapb.data.repository.DemoClothingCatalog
-import com.zuhdiarifazizi.projectakhirpapb.data.storage.ClothingPhotoStorage
-import com.zuhdiarifazizi.projectakhirpapb.domain.classifier.ClothingClassifier
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.HapticFeedbackManager
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingItem
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingPattern
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.HsvColor
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ItemVoiceAction
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
-import com.zuhdiarifazizi.projectakhirpapb.domain.nfc.NfcTagReader
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ScannerFrameGuidance
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ScannerHapticCue
 import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ClothesRepository
-import com.zuhdiarifazizi.projectakhirpapb.domain.scanner.ScannerFrameGuidance
-import com.zuhdiarifazizi.projectakhirpapb.domain.scanner.ScannerHapticCue
-import com.zuhdiarifazizi.projectakhirpapb.domain.security.SecurityInputValidator
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ClothingClassifier
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.HapticFeedbackManager
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.NfcTagReader
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.PhotoStorageRepository
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.MatchClothingFromWardrobeUseCase
+import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.SecurityInputValidator
 import java.util.UUID
 import kotlin.math.abs
 import kotlinx.coroutines.CoroutineDispatcher
@@ -37,15 +35,15 @@ import kotlinx.coroutines.withContext
 @OptIn(ExperimentalCoroutinesApi::class)
 class ManageClothesViewModel(
     private val clothesRepository: ClothesRepository,
-    private val photoStorage: ClothingPhotoStorage,
+    private val photoStorage: PhotoStorageRepository,
     private val ttsManager: TextToSpeechManager,
     private val hapticManager: HapticFeedbackManager,
-    private val classifier: ClothingClassifier = DefaultClothingClassifier(),
+    private val classifier: ClothingClassifier,
     private val nfcTagReader: NfcTagReader? = null,
     private val matchClothingUseCase: MatchClothingFromWardrobeUseCase = MatchClothingFromWardrobeUseCase(),
     private val photoByteReader: suspend (String) -> ByteArray = { ByteArray(0) },
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val userIdFlow: StateFlow<String> = MutableStateFlow(DemoClothingCatalog.USER_ID)
+    private val userIdFlow: StateFlow<String> = MutableStateFlow(ClothesRepository.DEFAULT_USER_ID)
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
@@ -60,7 +58,7 @@ class ManageClothesViewModel(
         viewModelScope.launch {
             userIdFlow
                 .flatMapLatest { rawUserId ->
-                    val uid = rawUserId.ifBlank { DemoClothingCatalog.USER_ID }
+                    val uid = rawUserId.ifBlank { ClothesRepository.DEFAULT_USER_ID }
                     clothesRepository.observeClothes(uid)
                 }
                 .catch {
@@ -94,14 +92,60 @@ class ManageClothesViewModel(
                 stagedPhotoUri = null,
                 isBindingRfidInForm = false,
                 errorMessage = null,
-                statusMessage = "Panduan 4 langkah tambah baju baru dibuka."
+                statusMessage = "Pilih 3 cara tambah baju: Video Kamera AI, Scan Tag RFID, atau Isi Manual."
             )
         }
         announce(
-            message = "Tambah baju baru. Letakkan pakaian mendatar, ratakan lipatan, pastikan terlihat penuh di layar, " +
-                "dan pegang ponsel sejajar. Tekan Ambil Foto untuk memulai pemindai.",
-            queueMode = if (queueFollowUpSpeech) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+            message = "Tambah baju baru. Tersedia tiga cara: Opsi satu pindai dengan video kamera AI, " +
+                "Opsi dua tambah dengan scan tag RFID, atau Opsi tiga isi formulir manual.",
+            queueMode = if (queueFollowUpSpeech) TextToSpeechManager.QUEUE_ADD else TextToSpeechManager.QUEUE_FLUSH
         )
+    }
+
+    fun speakAddGuide() {
+        hapticManager.performButtonClick()
+        announce(
+            "Panduan tiga opsi tambah pakaian. " +
+                "Opsi satu: Video Kamera AI, bentangkan pakaian lalu arahkan kamera, panduan akan berbicara pelan hingga foto diambil. " +
+                "Opsi dua: Scan RFID, pasang tag RFID tiga belas koma lima enam megahertz di baju lalu tempelkan ke belakang ponsel. " +
+                "Opsi tiga: Isi formulir manual atau pilih dari galeri."
+        )
+    }
+
+    fun openRfidAddFlow(queueFollowUpSpeech: Boolean = false) {
+        clearUncommittedStage()
+        nfcTagReader?.refreshAvailability()
+        _uiState.update {
+            it.copy(
+                page = ManageClothesPage.RFID_ADD,
+                selectedItem = null,
+                editingItemId = null,
+                form = ClothingFormState(),
+                originalPhotoUri = null,
+                stagedPhotoUri = null,
+                isBindingRfidInForm = false,
+                errorMessage = null,
+                statusMessage = "Tempelkan tag RFID baru ke bagian belakang ponsel untuk menautkan ke pakaian baru."
+            )
+        }
+        announce(
+            message = "Tambah baju lewat scan RFID. Langkah satu, siapkan stiker tag RFID di pakaian. " +
+                "Langkah dua, tempelkan tag ke belakang ponsel hingga bergetar. Form baju baru akan terbuka otomatis dengan tag tertaut.",
+            queueMode = if (queueFollowUpSpeech) TextToSpeechManager.QUEUE_ADD else TextToSpeechManager.QUEUE_FLUSH
+        )
+    }
+
+    fun speakRfidAddSteps() {
+        hapticManager.performButtonClick()
+        announce(
+            "Langkah scan tag RFID: Satu, pasang tag RFID pada kerah pakaian. " +
+                "Dua, tempelkan tag ke belakang ponsel. Tiga, setelah terbaca, lengkapi warna atau foto lalu tekan Simpan Pakaian."
+        )
+    }
+
+    fun simulateNewRfidAdd() {
+        val nextSuffix = ((_uiState.value.items.size + 10) % 250).toString(16).uppercase().padStart(2, '0')
+        simulateRfidTap("04:E1:B2:C3:$nextSuffix")
     }
 
     fun openAddForm() {
@@ -136,7 +180,7 @@ class ManageClothesViewModel(
         }
         announce(
             message = "Mode kenali pakaian aktif. Tempelkan tag RFID ke belakang ponsel atau pilih Kenali lewat Kamera AI.",
-            queueMode = if (queueFollowUpSpeech) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+            queueMode = if (queueFollowUpSpeech) TextToSpeechManager.QUEUE_ADD else TextToSpeechManager.QUEUE_FLUSH
         )
     }
 
@@ -357,15 +401,18 @@ class ManageClothesViewModel(
             )
         }
 
+        val speakableCue = guidance.spokenCue?.takeIf {
+            guidance.shouldTriggerAutoCapture || !ttsManager.isSpeaking
+        }
         when (guidance.hapticCue) {
             ScannerHapticCue.TICK -> hapticManager.performCategorySelected()
-            ScannerHapticCue.WARNING -> hapticManager.performButtonClick()
+            ScannerHapticCue.WARNING -> if (speakableCue != null) hapticManager.performButtonClick()
             ScannerHapticCue.LOCKED_CAPTURE -> hapticManager.performSuccess()
             null -> Unit
         }
 
-        if (current.scannerHud.isVoiceGuidanceOn && guidance.spokenCue != null) {
-            ttsManager.speak(guidance.spokenCue)
+        if (current.scannerHud.isVoiceGuidanceOn && speakableCue != null) {
+            ttsManager.speakCalm(speakableCue)
         }
 
         if (guidance.shouldTriggerAutoCapture) {
@@ -496,7 +543,7 @@ class ManageClothesViewModel(
     fun speakWardrobeOverview(queueFollowUpSpeech: Boolean = false) {
         val items = _uiState.value.items
         hapticManager.performButtonClick()
-        val mode = if (queueFollowUpSpeech) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+        val mode = if (queueFollowUpSpeech) TextToSpeechManager.QUEUE_ADD else TextToSpeechManager.QUEUE_FLUSH
         if (items.isEmpty()) {
             ttsManager.speak(
                 text = "Lemari pakaian Anda masih kosong. Tekan Tambah baju baru untuk mulai mendigitalkan pakaian.",
@@ -519,7 +566,7 @@ class ManageClothesViewModel(
     }
 
     fun seedStarterWardrobe() {
-        val uid = userIdFlow.value.ifBlank { DemoClothingCatalog.USER_ID }
+        val uid = userIdFlow.value.ifBlank { ClothesRepository.DEFAULT_USER_ID }
         viewModelScope.launch {
             runCatching { clothesRepository.seedStarterWardrobe(uid) }
                 .onSuccess {
@@ -609,7 +656,7 @@ class ManageClothesViewModel(
 
             val item = ClothingItem(
                 id = existing?.id ?: UUID.randomUUID().toString(),
-                userId = existing?.userId ?: userIdFlow.value.ifBlank { DemoClothingCatalog.USER_ID },
+                userId = existing?.userId ?: userIdFlow.value.ifBlank { ClothesRepository.DEFAULT_USER_ID },
                 name = name,
                 category = current.form.category,
                 pattern = current.form.pattern,
@@ -675,10 +722,45 @@ class ManageClothesViewModel(
         when (_uiState.value.page) {
             ManageClothesPage.LIST -> Unit
             ManageClothesPage.ADD_GUIDE -> returnToList()
+            ManageClothesPage.RFID_ADD -> openAddGuide()
             ManageClothesPage.SCAN_FIND -> returnToList()
             ManageClothesPage.FORM -> cancelForm()
             ManageClothesPage.DETAIL -> returnToList()
             ManageClothesPage.CAMERA -> cancelCamera()
+        }
+    }
+
+    fun performVoiceItemAction(
+        action: ItemVoiceAction,
+        oneBasedNumber: Int?,
+        nameQuery: String?
+    ) {
+        val visible = _uiState.value.visibleItems
+        if (visible.isEmpty()) {
+            announceError("Belum ada pakaian yang tampil di daftar.")
+            return
+        }
+        val target = when {
+            oneBasedNumber != null -> visible.getOrNull(oneBasedNumber - 1)
+            !nameQuery.isNullOrBlank() -> visible.firstOrNull {
+                it.name.contains(nameQuery.trim(), ignoreCase = true) ||
+                    it.color.colorName.contains(nameQuery.trim(), ignoreCase = true)
+            }
+            else -> visible.firstOrNull()
+        }
+        if (target == null) {
+            val desc = oneBasedNumber?.let { "nomor $it" } ?: nameQuery.orEmpty()
+            announceError("Pakaian $desc tidak ditemukan. Tersedia ${visible.size} pakaian.")
+            return
+        }
+        when (action) {
+            ItemVoiceAction.SPEAK -> speakItemSummary(target)
+            ItemVoiceAction.DETAIL -> openDetails(target)
+            ItemVoiceAction.EDIT -> openEditForm(target)
+            ItemVoiceAction.DELETE -> {
+                requestDeleteConfirmation(target)
+                announce("Apakah Anda yakin ingin menghapus ${target.name}? Katakan Ya atau Batal.")
+            }
         }
     }
 
@@ -789,6 +871,34 @@ class ManageClothesViewModel(
     private fun handleScannedRfidUid(rawUid: String) {
         val uid = SecurityInputValidator.normalizeNfcUidString(rawUid) ?: return
         val current = _uiState.value
+        if (current.page == ManageClothesPage.RFID_ADD) {
+            viewModelScope.launch {
+                val repoMatch = clothesRepository.getClothingByRfid(uid)
+                val existing = repoMatch ?: matchClothingUseCase.matchByRfid(current.items, uid)
+                if (existing != null) {
+                    hapticManager.performError()
+                    openDetails(existing)
+                    announce("Tag RFID ini sudah terdaftar pada ${existing.name}. Membuka detail pakaian tersebut.")
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            page = ManageClothesPage.FORM,
+                            editingItemId = null,
+                            selectedItem = null,
+                            form = ClothingFormState(rfidTagUid = uid),
+                            isBindingRfidInForm = false,
+                            errorMessage = null,
+                            statusMessage = "Tag RFID $uid berhasil tertaut ke pakaian baru."
+                        )
+                    }
+                    hapticManager.performSuccess()
+                    ttsManager.speak(
+                        "Tag RFID berhasil terbaca dan ditautkan. Silakan isi nama, warna, atau ambil foto pakaian, lalu tekan Simpan Pakaian."
+                    )
+                }
+            }
+            return
+        }
         if (current.page == ManageClothesPage.FORM && current.isBindingRfidInForm) {
             _uiState.update {
                 it.copy(
@@ -879,7 +989,7 @@ class ManageClothesViewModel(
         hapticManager.performButtonClick()
     }
 
-    private fun announce(message: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH) {
+    private fun announce(message: String, queueMode: Int = TextToSpeechManager.QUEUE_FLUSH) {
         _uiState.update { it.copy(statusMessage = message, errorMessage = null) }
         ttsManager.speak(message, queueMode = queueMode)
     }

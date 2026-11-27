@@ -147,7 +147,8 @@ fun ClothingFormScreen(
             selectedLabel = form.colorName,
             choices = ClothingColorOptions.map { it.name to it.name },
             onSelect = onColorChange,
-            errorMessage = form.colorError
+            errorMessage = form.colorError,
+            accessibilityHint = ::colorAccessibilityHint
         )
         form.extractedHsv?.let { hsv ->
             Text(
@@ -233,13 +234,15 @@ private fun <T> ChoiceGroup(
     selectedLabel: String?,
     choices: List<Pair<T, String>>,
     onSelect: (T) -> Unit,
-    errorMessage: String? = null
+    errorMessage: String? = null,
+    accessibilityHint: ((String) -> String)? = null
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(AuraSpacing.xs)) {
         Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         FlowRow(horizontalArrangement = Arrangement.spacedBy(AuraSpacing.xs), verticalArrangement = Arrangement.spacedBy(AuraSpacing.xs)) {
             choices.forEach { (value, label) ->
                 val isSelected = selectedLabel == label
+                val hintSuffix = accessibilityHint?.invoke(label)?.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
                 FilterChip(
                     selected = isSelected,
                     onClick = { onSelect(value) },
@@ -248,12 +251,29 @@ private fun <T> ChoiceGroup(
                         .defaultMinSize(minHeight = 48.dp)
                         .semantics {
                             stateDescription = if (isSelected) "Terpilih" else "Tidak terpilih"
-                            contentDescription = "$title: $label"
+                            contentDescription = "$title: $label$hintSuffix"
                         }
                 )
             }
         }
         errorMessage?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
-        Text("Terpilih: ${selectedLabel ?: "belum dipilih"}", style = MaterialTheme.typography.bodySmall)
+        val selectedHint = selectedLabel?.let { lbl ->
+            accessibilityHint?.invoke(lbl)?.takeIf { it.isNotBlank() }?.let { " ($it)" }.orEmpty()
+        }.orEmpty()
+        Text("Terpilih: ${selectedLabel ?: "belum dipilih"}$selectedHint", style = MaterialTheme.typography.bodySmall)
     }
+}
+
+private fun colorAccessibilityHint(colorName: String): String = when (colorName) {
+    "Putih" -> "Netral sangat terang"
+    "Hitam" -> "Netral sangat gelap"
+    "Abu-abu" -> "Netral sedang"
+    "Biru dongker" -> "Nuansa gelap dingin"
+    "Biru denim" -> "Nuansa sedang dingin"
+    "Biru" -> "Nuansa cerah dingin"
+    "Cream" -> "Netral terang hangat"
+    "Olive" -> "Nuansa redup hangat-alami"
+    "Merah" -> "Nuansa hangat mencolok"
+    "Cokelat" -> "Nuansa bumi gelap hangat"
+    else -> ""
 }

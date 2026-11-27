@@ -37,10 +37,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.zuhdiarifazizi.projectakhirpapb.R
+import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraCard
+import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraPrimaryButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraSecondaryButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.home.components.VoiceActionButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraHighContrastInk
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraHintBannerBg
+import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraIndigoSoft
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraNavy
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraNavyDeep
 import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraSpacing
@@ -49,11 +52,16 @@ import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraWarmSurface
 
 private data class GuideStep(val number: Int, val instruction: String)
 
-private val ADD_CLOTHING_STEPS = listOf(
-    GuideStep(1, "Letakkan pakaian mendatar di atas meja atau tempat tidur."),
-    GuideStep(2, "Ratakan semua kerutan dan lipatan kain."),
-    GuideStep(3, "Pastikan seluruh bagian pakaian terlihat jelas di layar."),
-    GuideStep(4, "Pegang ponsel sejajar tepat di atas pakaian.")
+private val VIDEO_GUIDE_STEPS = listOf(
+    GuideStep(1, "Bentangkan pakaian secukupnya; lipatan kecil atau jarak agak dekat tetap aman."),
+    GuideStep(2, "Arahkan kamera ke bagian pakaian; panduan suara tenang akan memandu perlahan."),
+    GuideStep(3, "Tahan sebentar saat terdeteksi atau tekan Ambil Foto Sekarang kapan saja.")
+)
+
+private val RFID_ADD_STEPS = listOf(
+    GuideStep(1, "Tempelkan stiker atau gantungan tag RFID 13,56 MHz pada bagian dalam kerah/pinggang pakaian."),
+    GuideStep(2, "Tekan Tambah dengan Scan RFID di bawah, lalu tempelkan tag ke belakang ponsel hingga bergetar."),
+    GuideStep(3, "Setelah UID tag tertaut otomatis, lengkapi warna/foto bila perlu lalu tekan Simpan Pakaian.")
 )
 
 @Composable
@@ -61,9 +69,10 @@ fun AddClothingGuideScreen(
     isVoiceListening: Boolean = false,
     partialTranscript: String = "",
     onVoiceClick: () -> Unit = {},
+    onSpeakGuide: () -> Unit = {},
     onBack: () -> Unit,
-    onProfileClick: () -> Unit,
     onStartCamera: () -> Unit,
+    onStartRfidAdd: () -> Unit = {},
     onPickFromGallery: () -> Unit,
     onManualForm: () -> Unit,
     modifier: Modifier = Modifier
@@ -82,55 +91,33 @@ fun AddClothingGuideScreen(
                     .fillMaxWidth()
                     .height(64.dp)
                     .padding(horizontal = AuraSpacing.xs),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .semantics {
-                                contentDescription = "Kembali ke layar sebelumnya"
-                                role = Role.Button
-                            }
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_arrow_back),
-                            contentDescription = null,
-                            tint = AuraHighContrastInk,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    Text(
-                        text = "Tambah Baju Baru",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 22.sp,
-                            color = AuraHighContrastInk
-                        ),
-                        modifier = Modifier.semantics { heading() }
-                    )
-                }
-
                 IconButton(
-                    onClick = onProfileClick,
+                    onClick = onBack,
                     modifier = Modifier
-                        .padding(end = AuraSpacing.sm)
-                        .size(36.dp)
-                        .background(AuraNavyDeep, RoundedCornerShape(10.dp))
+                        .size(48.dp)
                         .semantics {
-                            contentDescription = "Profil pengguna"
+                            contentDescription = "Kembali ke daftar pakaian"
                             role = Role.Button
                         }
                 ) {
                     Icon(
-                        painter = painterResource(R.drawable.ic_profile),
+                        painter = painterResource(R.drawable.ic_arrow_back),
                         contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
+                        tint = AuraHighContrastInk,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
+                Text(
+                    text = "Pilih Cara Tambah Baju",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 21.sp,
+                        color = AuraHighContrastInk
+                    ),
+                    modifier = Modifier.semantics { heading() }
+                )
             }
         }
 
@@ -143,21 +130,54 @@ fun AddClothingGuideScreen(
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(AuraSpacing.xs)) {
                 Text(
-                    text = "Tambah baju baru",
+                    text = "3 Opsi Tambah Baju",
                     style = MaterialTheme.typography.headlineMedium.copy(
                         fontWeight = FontWeight.ExtraBold,
-                        fontSize = 28.sp,
+                        fontSize = 26.sp,
                         color = AuraHighContrastInk
                     ),
                     modifier = Modifier.semantics { heading() }
                 )
                 Text(
-                    text = "Ikuti empat langkah mudah untuk memfoto pakaian Anda:",
+                    text = "Pilih Video Kamera AI, Scan Tag RFID, atau Isi Manual. Semua langkah dapat dioperasikan lewat suara.",
                     style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         color = AuraTextSecondary
                     )
                 )
+            }
+
+            Surface(
+                onClick = onSpeakGuide,
+                color = AuraIndigoSoft,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .defaultMinSize(minHeight = 48.dp)
+                    .semantics {
+                        contentDescription = "Dengarkan panduan 3 opsi tambah pakaian"
+                        role = Role.Button
+                    }
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_volume_up),
+                        contentDescription = null,
+                        tint = AuraNavyDeep,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Dengarkan Panduan 3 Opsi Tambah Baju",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = AuraNavyDeep
+                        )
+                    )
+                }
             }
 
             VoiceActionButton(
@@ -166,83 +186,109 @@ fun AddClothingGuideScreen(
                 partialTranscript = partialTranscript
             )
 
-            ADD_CLOTHING_STEPS.forEach { step ->
-                HighContrastStepCard(step = step)
-            }
-
-            Surface(
-                color = AuraHintBannerBg,
-                border = BorderStroke(2.dp, AuraHighContrastInk),
-                shape = RoundedCornerShape(2.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics(mergeDescendants = true) {
-                        contentDescription = "Panduan suara akan berbunyi saat pakaian sudah terdeteksi."
-                    }
-            ) {
-                Row(
-                    modifier = Modifier.padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Icon(
-                        painter = painterResource(R.drawable.ic_volume_up),
-                        contentDescription = null,
-                        tint = AuraNavy,
-                        modifier = Modifier.size(22.dp)
-                    )
+            // Opsi 1: Video Kamera AI (Utama, Tenang & Fleksibel)
+            AuraCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(AuraSpacing.sm)) {
                     Text(
-                        text = "Panduan suara akan berbunyi saat pakaian sudah terdeteksi.",
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            fontSize = 17.sp,
+                        text = "Opsi 1 • Pindai dengan Video Kamera AI",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = AuraNavyDeep
+                        ),
+                        modifier = Modifier.semantics { heading() }
+                    )
+                    VIDEO_GUIDE_STEPS.forEach { step ->
+                        HighContrastStepCard(step = step)
+                    }
+                    Surface(
+                        color = AuraHintBannerBg,
+                        border = BorderStroke(1.dp, AuraHighContrastInk),
+                        shape = RoundedCornerShape(8.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Panduan kamera berbicara pelan dengan jeda nyaman dan tidak sensitif terhadap lipatan kain.",
+                            modifier = Modifier.padding(12.dp),
+                            style = MaterialTheme.typography.bodyMedium,
                             color = AuraHighContrastInk
                         )
+                    }
+                    Button(
+                        onClick = onStartCamera,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .defaultMinSize(minHeight = 58.dp),
+                        shape = RoundedCornerShape(8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = AuraNavy, contentColor = Color.White)
+                    ) {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_clothes),
+                            contentDescription = null,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(Modifier.size(10.dp))
+                        Text(
+                            text = "1. Mulai Pindai Video AI",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                        )
+                    }
+                    AuraSecondaryButton(
+                        text = "Pilih Foto dari Galeri",
+                        onClick = onPickFromGallery,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 }
             }
 
-            Spacer(Modifier.height(AuraSpacing.xs))
-
-            Button(
-                onClick = onStartCamera,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .defaultMinSize(minHeight = 64.dp),
-                shape = RoundedCornerShape(4.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = AuraNavy,
-                    contentColor = Color.White
-                )
-            ) {
-                Icon(
-                    painter = painterResource(R.drawable.ic_clothes),
-                    contentDescription = null,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(Modifier.size(12.dp))
-                Text(
-                    text = "Ambil Foto",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 20.sp
+            // Opsi 2: Scan Tag RFID (Ide Original + Langkah-langkah)
+            AuraCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(AuraSpacing.sm)) {
+                    Text(
+                        text = "Opsi 2 • Tambah dengan Scan Tag RFID",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = AuraNavyDeep
+                        ),
+                        modifier = Modifier.semantics { heading() }
                     )
-                )
+                    Text(
+                        text = "Langkah mendaftarkan pakaian dengan tag RFID/NFC:",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AuraTextSecondary
+                    )
+                    RFID_ADD_STEPS.forEach { step ->
+                        HighContrastStepCard(step = step)
+                    }
+                    AuraPrimaryButton(
+                        text = "2. Tambah dengan Scan RFID",
+                        onClick = onStartRfidAdd,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(AuraSpacing.sm)
-            ) {
-                AuraSecondaryButton(
-                    text = "Galeri",
-                    onClick = onPickFromGallery,
-                    modifier = Modifier.weight(1f)
-                )
-                AuraSecondaryButton(
-                    text = "Isi Manual",
-                    onClick = onManualForm,
-                    modifier = Modifier.weight(1f)
-                )
+            // Opsi 3: Isi Detail Manual
+            AuraCard(modifier = Modifier.fillMaxWidth()) {
+                Column(verticalArrangement = Arrangement.spacedBy(AuraSpacing.sm)) {
+                    Text(
+                        text = "Opsi 3 • Isi Formulir Secara Manual",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontWeight = FontWeight.Bold,
+                            color = AuraNavyDeep
+                        ),
+                        modifier = Modifier.semantics { heading() }
+                    )
+                    Text(
+                        text = "Masukkan nama pakaian, bahan, kategori, nama warna jelas (ramah buta warna), motif, dan aktivitas langsung tanpa memindai.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = AuraTextSecondary
+                    )
+                    AuraSecondaryButton(
+                        text = "3. Isi Detail Manual",
+                        onClick = onManualForm,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
 
             Spacer(Modifier.height(AuraSpacing.md))
@@ -254,8 +300,8 @@ fun AddClothingGuideScreen(
 private fun HighContrastStepCard(step: GuideStep) {
     Surface(
         color = Color.White,
-        border = BorderStroke(2.dp, AuraHighContrastInk),
-        shape = RoundedCornerShape(2.dp),
+        border = BorderStroke(1.5.dp, AuraHighContrastInk),
+        shape = RoundedCornerShape(6.dp),
         modifier = Modifier
             .fillMaxWidth()
             .semantics(mergeDescendants = true) {
@@ -263,43 +309,32 @@ private fun HighContrastStepCard(step: GuideStep) {
             }
     ) {
         Row(
-            modifier = Modifier.padding(18.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.Top
+            modifier = Modifier.padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(48.dp)
-                    .background(AuraHighContrastInk),
+                    .size(36.dp)
+                    .background(AuraHighContrastInk, RoundedCornerShape(4.dp)),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     text = step.number.toString(),
-                    style = MaterialTheme.typography.headlineSmall.copy(
+                    style = MaterialTheme.typography.titleMedium.copy(
                         fontWeight = FontWeight.Bold,
                         color = AuraWarmSurface
                     )
                 )
             }
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "LANGKAH ${step.number}",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp,
-                        letterSpacing = 0.8.sp,
-                        color = AuraHighContrastInk
-                    )
-                )
-                Text(
-                    text = step.instruction,
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 17.sp,
-                        lineHeight = 25.sp,
-                        color = AuraHighContrastInk
-                    )
-                )
-            }
+            Text(
+                text = step.instruction,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = AuraHighContrastInk,
+                    lineHeight = 20.sp
+                ),
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

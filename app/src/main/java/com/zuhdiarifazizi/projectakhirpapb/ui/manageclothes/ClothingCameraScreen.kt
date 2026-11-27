@@ -68,10 +68,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.zuhdiarifazizi.projectakhirpapb.R
-import com.zuhdiarifazizi.projectakhirpapb.data.scanner.CameraXGarmentAnalyzer
-import com.zuhdiarifazizi.projectakhirpapb.data.scanner.DeviceTiltMonitor
-import com.zuhdiarifazizi.projectakhirpapb.domain.scanner.GarmentFrameAnalyzer
-import com.zuhdiarifazizi.projectakhirpapb.domain.scanner.ScannerFrameGuidance
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.LumaChromaGrid
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ScannerFrameGuidance
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.TiltState
+import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.GarmentFrameAnalyzer
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraPrimaryButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.AuraSecondaryButton
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.LocalClothingPhoto
@@ -94,6 +94,10 @@ fun ClothingCameraScreen(
     captureRequestId: Int,
     capturedPhotoUri: String?,
     isVoiceListening: Boolean = false,
+    tiltState: TiltState = TiltState(),
+    createFrameAnalyzer: ((LumaChromaGrid) -> Unit) -> ImageAnalysis.Analyzer = {
+        ImageAnalysis.Analyzer { image -> image.close() }
+    },
     onVoiceClick: () -> Unit = {},
     onBack: () -> Unit,
     onOpenGallery: () -> Unit,
@@ -120,19 +124,12 @@ fun ClothingCameraScreen(
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
 
     val frameAnalyzer = remember { GarmentFrameAnalyzer() }
-    val tiltMonitor = remember(context) { DeviceTiltMonitor(context) }
-    val tiltState by tiltMonitor.tiltState.collectAsState()
     val latestTiltState by rememberUpdatedState(tiltState)
     val latestFrameCallback by rememberUpdatedState(onFrameEvaluated)
 
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var boundCamera by remember { mutableStateOf<Camera?>(null) }
     var lastRequestId by remember { mutableIntStateOf(captureRequestId) }
-
-    DisposableEffect(tiltMonitor) {
-        tiltMonitor.start()
-        onDispose { tiltMonitor.stop() }
-    }
 
     DisposableEffect(Unit) {
         onDispose { analysisExecutor.shutdown() }
@@ -153,7 +150,7 @@ fun ClothingCameraScreen(
             CameraSelector.DEFAULT_BACK_CAMERA
         }
 
-        val imageAnalyzer = CameraXGarmentAnalyzer { grid ->
+        val imageAnalyzer = createFrameAnalyzer { grid ->
             val tilt = latestTiltState
             val guidance = frameAnalyzer.evaluateFrame(
                 grid = grid,
@@ -566,11 +563,11 @@ private fun LiveScannerStatusBanner(
                             .background(if (hud.isLockedForAutoCapture) AuraSuccessGreen else AuraNavyDeep)
                     )
                     Text(
-                        text = "AI PEMINDAI AKTIF",
+                        text = if (hud.isLockedForAutoCapture) "✓ SIAP DIFOTO" else "• MENYESUAIKAN",
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp,
-                            color = AuraNavyDeep
+                            color = if (hud.isLockedForAutoCapture) AuraSuccessGreen else AuraNavyDeep
                         )
                     )
                 }

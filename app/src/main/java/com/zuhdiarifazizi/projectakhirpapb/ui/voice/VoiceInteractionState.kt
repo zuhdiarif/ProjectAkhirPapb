@@ -1,7 +1,7 @@
 package com.zuhdiarifazizi.projectakhirpapb.ui.voice
 
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.VoiceCommand
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.VoiceIntent
-import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceCommand
 
 enum class VoiceSessionStatus {
     IDLE,

@@ -2,14 +2,14 @@ package com.zuhdiarifazizi.projectakhirpapb.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.HapticFeedbackManager
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ActivityCategory
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
 import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ActivityCategoryRepository
-import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceInteractionManager
-import com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceNavigationCallback
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.HapticFeedbackManager
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.ui.components.FeedbackMessage
+import com.zuhdiarifazizi.projectakhirpapb.ui.voice.VoiceInteractionManager
+import com.zuhdiarifazizi.projectakhirpapb.ui.voice.VoiceNavigationCallback
 import com.zuhdiarifazizi.projectakhirpapb.ui.voice.VoiceSessionStatus
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

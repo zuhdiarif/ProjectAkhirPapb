@@ -71,7 +71,6 @@ fun HistoryScreen(
     isVoiceListening: Boolean = false,
     partialTranscript: String = "",
     onVoiceClick: () -> Unit = {},
-    onProfileClick: () -> Unit = {},
     onSpeakSummary: () -> Unit = {},
     onSpeakHistoryEntry: (OutfitHistory) -> Unit = {},
     onDeleteHistoryEntry: (OutfitHistory) -> Unit = {},
@@ -95,7 +94,7 @@ fun HistoryScreen(
                         .height(64.dp)
                         .padding(horizontal = 20.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
+                    horizontalArrangement = Arrangement.Start
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -120,24 +119,6 @@ fun HistoryScreen(
                                 color = AuraHighContrastInk,
                                 fontSize = 20.sp
                             )
-                        )
-                    }
-
-                    IconButton(
-                        onClick = onProfileClick,
-                        modifier = Modifier
-                            .size(44.dp)
-                            .background(AuraNavyDeep, RoundedCornerShape(10.dp))
-                            .semantics {
-                                contentDescription = "Profil pengguna"
-                                role = Role.Button
-                            }
-                    ) {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_profile),
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(18.dp)
                         )
                     }
                 }

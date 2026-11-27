@@ -5,9 +5,9 @@ import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingItem
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingPattern
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.HsvColor
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
-import com.zuhdiarifazizi.projectakhirpapb.domain.scanner.ScannerReadiness
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ScannerReadiness
 
-enum class ManageClothesPage { LIST, ADD_GUIDE, CAMERA, FORM, DETAIL, SCAN_FIND }
+enum class ManageClothesPage { LIST, ADD_GUIDE, RFID_ADD, CAMERA, FORM, DETAIL, SCAN_FIND }
 
 data class ClothingColorOption(
     val name: String,

@@ -3,7 +3,7 @@ package com.zuhdiarifazizi.projectakhirpapb.domain.usecase
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingItem
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.HsvColor
-import com.zuhdiarifazizi.projectakhirpapb.domain.security.SecurityInputValidator
+import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.SecurityInputValidator
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin

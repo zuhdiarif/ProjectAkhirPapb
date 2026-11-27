@@ -1,17 +1,15 @@
 package com.zuhdiarifazizi.projectakhirpapb.ui.pickoutfit
 
-import android.speech.tts.TextToSpeech
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.zuhdiarifazizi.projectakhirpapb.data.repository.DemoClothingCatalog
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.HapticFeedbackManager
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.OutfitCandidate
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.OutfitHistory
 import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ClothesRepository
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.HapticFeedbackManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.repository.OutfitRepository
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.AnalyzeOutfitRotationUseCase
 import com.zuhdiarifazizi.projectakhirpapb.domain.usecase.CalculateOutfitScoreUseCase
 import java.util.UUID
@@ -28,14 +26,14 @@ class PickOutfitViewModel(
     private val calculateOutfitScoreUseCase: CalculateOutfitScoreUseCase = CalculateOutfitScoreUseCase(),
     private val outfitRepository: OutfitRepository? = null,
     private val analyzeOutfitRotationUseCase: AnalyzeOutfitRotationUseCase = AnalyzeOutfitRotationUseCase(),
-    private val userIdProvider: () -> String = { DemoClothingCatalog.USER_ID }
+    private val userIdProvider: () -> String = { ClothesRepository.DEFAULT_USER_ID }
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PickOutfitUiState())
     val uiState: StateFlow<PickOutfitUiState> = _uiState.asStateFlow()
 
     fun beginSelection(occasion: Occasion, queueFollowUpSpeech: Boolean = false) {
-        val activeUserId = userIdProvider().ifBlank { DemoClothingCatalog.USER_ID }
+        val activeUserId = userIdProvider().ifBlank { ClothesRepository.DEFAULT_USER_ID }
         _uiState.update {
             it.copy(
                 step = PickOutfitStep.CATEGORY_SELECTION,
@@ -52,7 +50,7 @@ class PickOutfitViewModel(
         }
         speak(
             text = "Kategori aktivitas ${occasion.displayName}. Pilih atasan dan bawahan. Pakaian luar opsional. Gunakan kotak centang untuk memilih kategori.",
-            queueMode = if (queueFollowUpSpeech) TextToSpeech.QUEUE_ADD else TextToSpeech.QUEUE_FLUSH
+            queueMode = if (queueFollowUpSpeech) TextToSpeechManager.QUEUE_ADD else TextToSpeechManager.QUEUE_FLUSH
         )
         viewModelScope.launch {
             runCatching {
@@ -98,6 +96,37 @@ class PickOutfitViewModel(
             current.copy(selectedCategories = next, errorMessage = null, statusMessage = null)
         }
         hapticManager?.performCategorySelected()
+    }
+
+    fun toggleCategoryByVoice(category: ClothingCategory, selected: Boolean?) {
+        val currentSelected = category in _uiState.value.selectedCategories
+        val target = selected ?: !currentSelected
+        if (target != currentSelected) {
+            setCategorySelected(category, target)
+        } else {
+            hapticManager?.performButtonClick()
+        }
+        val stateLabel = if (target) "dipilih" else "tidak dipilih"
+        val message = "${category.displayName} $stateLabel. Katakan Lanjutkan untuk melihat rekomendasi."
+        _uiState.update { it.copy(statusMessage = message, errorMessage = null) }
+        speak(message)
+    }
+
+    fun selectAllCategoriesByVoice() {
+        val all = setOf(
+            ClothingCategory.TOP_WEAR,
+            ClothingCategory.BOTTOM_WEAR,
+            ClothingCategory.OUTER_WEAR
+        )
+        _uiState.update {
+            it.copy(
+                selectedCategories = all,
+                statusMessage = "Atasan, bawahan, dan pakaian luar dipilih.",
+                errorMessage = null
+            )
+        }
+        hapticManager?.performCategorySelected()
+        speak("Atasan, bawahan, dan pakaian luar dipilih. Katakan Lanjutkan untuk melihat rekomendasi.")
     }
 
     fun generateRecommendations(): Boolean {
@@ -153,14 +182,70 @@ class PickOutfitViewModel(
             return
         }
         val nextIndex = (current.currentCandidateIndex + 1) % current.candidates.size
+        focusRecommendation(nextIndex)
+    }
+
+    fun previousRecommendation() {
+        val current = _uiState.value
+        if (current.candidates.isEmpty()) {
+            announceError("Belum ada rekomendasi untuk ditampilkan.")
+            return
+        }
+        val prevIndex = if (current.currentCandidateIndex <= 0) {
+            current.candidates.lastIndex
+        } else {
+            current.currentCandidateIndex - 1
+        }
+        focusRecommendation(prevIndex)
+    }
+
+    fun focusRecommendation(index: Int) {
+        val current = _uiState.value
+        if (current.candidates.isEmpty()) {
+            announceError("Belum ada rekomendasi untuk ditampilkan.")
+            return
+        }
+        if (index !in current.candidates.indices) {
+            announceError("Rekomendasi nomor ${index + 1} tidak tersedia. Pilihan hanya satu sampai ${current.candidates.size}.")
+            return
+        }
         _uiState.update {
             it.copy(
-                currentCandidateIndex = nextIndex,
-                statusMessage = "Rekomendasi ${nextIndex + 1} dari ${current.candidates.size}."
+                currentCandidateIndex = index,
+                statusMessage = "Rekomendasi ${index + 1} dari ${current.candidates.size}.",
+                errorMessage = null
             )
         }
         hapticManager?.performButtonClick()
-        speak(description(current.candidates[nextIndex], nextIndex, current.candidates.size))
+        speak(description(current.candidates[index], index, current.candidates.size))
+    }
+
+    fun selectNumberedRecommendationByVoice(index: Int): Boolean {
+        val current = _uiState.value
+        if (current.candidates.isEmpty()) {
+            announceError("Belum ada rekomendasi. Pilih kategori pakaian dan minta rekomendasi terlebih dahulu.")
+            return false
+        }
+        if (index !in current.candidates.indices) {
+            announceError("Rekomendasi nomor ${index + 1} tidak ditemukan. Tersedia ${current.candidates.size} rekomendasi.")
+            return false
+        }
+        return chooseRecommendation(index)
+    }
+
+    fun viewRecommendationDetailsByVoice(index: Int?): Boolean {
+        val current = _uiState.value
+        if (current.candidates.isEmpty()) {
+            announceError("Belum ada rekomendasi untuk dilihat detailnya.")
+            return false
+        }
+        val targetIndex = index ?: current.currentCandidateIndex
+        if (targetIndex !in current.candidates.indices) {
+            announceError("Rekomendasi nomor ${targetIndex + 1} tidak ditemukan.")
+            return false
+        }
+        viewRecommendationDetails(targetIndex)
+        return true
     }
 
     fun speakRecommendation(index: Int = _uiState.value.currentCandidateIndex) {
@@ -278,7 +363,7 @@ class PickOutfitViewModel(
     }
 
     private fun persistChosenOutfit(candidate: OutfitCandidate) {
-        val activeUserId = userIdProvider().ifBlank { DemoClothingCatalog.USER_ID }
+        val activeUserId = userIdProvider().ifBlank { ClothesRepository.DEFAULT_USER_ID }
         val wornAt = System.currentTimeMillis()
         val wornItems = listOfNotNull(candidate.topWear, candidate.bottomWear, candidate.outerWear)
         val entry = OutfitHistory(
@@ -340,7 +425,7 @@ class PickOutfitViewModel(
         speak(message)
     }
 
-    private fun speak(text: String, queueMode: Int = TextToSpeech.QUEUE_FLUSH) {
+    private fun speak(text: String, queueMode: Int = TextToSpeechManager.QUEUE_FLUSH) {
         ttsManager?.speak(text, queueMode = queueMode)
     }
 

@@ -5,7 +5,7 @@ import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.CompiledModel
 import com.google.ai.edge.litert.Environment
 import com.google.ai.edge.litert.TensorBuffer
-import com.zuhdiarifazizi.projectakhirpapb.domain.harmony.ProjectHarmonyFeatureEncoder
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ProjectHarmonyFeatureEncoder
 import java.io.File
 
 private const val HARMONY_MODEL_ASSET = "project_harmony.tflite"

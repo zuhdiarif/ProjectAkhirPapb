@@ -4,9 +4,9 @@ import android.content.Context
 import android.util.Log
 import com.google.ai.edge.litert.Accelerator
 import com.google.ai.edge.litert.LiteRtException
-import com.zuhdiarifazizi.projectakhirpapb.domain.harmony.HarmonyPrediction
-import com.zuhdiarifazizi.projectakhirpapb.domain.harmony.ProjectHarmonyFeatureEncoder
-import com.zuhdiarifazizi.projectakhirpapb.domain.harmony.ProjectHarmonyScorer
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.HarmonyPrediction
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ProjectHarmonyFeatureEncoder
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ProjectHarmonyScorer
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingItem
 import java.util.concurrent.Callable
 import java.util.concurrent.Executors

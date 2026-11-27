@@ -54,7 +54,7 @@ fun HomeScreen(
     onVoiceButtonClick: () -> Unit,
     onRepeatGuidance: () -> Unit,
     onDismissBanner: () -> Unit,
-    onProfileClick: () -> Unit = {},
+    onOpenOnboarding: () -> Unit = {},
     onScreenShown: () -> Unit = onRepeatGuidance,
     partialTranscript: String = "",
     modifier: Modifier = Modifier
@@ -73,9 +73,8 @@ fun HomeScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp, vertical = 10.dp)
         ) {
-            // Header
             HomeHeader(
-                onProfileClick = onProfileClick
+                onOpenOnboarding = onOpenOnboarding
             )
 
             // Feedback Banner (Error or Notification)

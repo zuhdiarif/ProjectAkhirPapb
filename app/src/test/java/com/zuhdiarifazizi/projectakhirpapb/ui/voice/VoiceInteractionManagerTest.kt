@@ -1,0 +1,300 @@
+package com.zuhdiarifazizi.projectakhirpapb.ui.voice
+
+import com.zuhdiarifazizi.projectakhirpapb.data.device.IndonesianIntentRecognizer
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.VoicePage
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.VoiceRecognitionError
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.VoiceScreenContext
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.SpeechRecognizerManager
+import com.zuhdiarifazizi.projectakhirpapb.ui.home.FakeHapticFeedbackManager
+import com.zuhdiarifazizi.projectakhirpapb.ui.home.FakeTextToSpeechManager
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertTrue
+import org.junit.Before
+import org.junit.Test
+
+class FakeSpeechRecognizerManager : SpeechRecognizerManager {
+    var isStarted = false
+    var isDestroyed = false
+    override var isListening: Boolean = false
+
+    var onResultCallback: ((String) -> Unit)? = null
+    var onErrorCallback: ((VoiceRecognitionError) -> Unit)? = null
+
+    override fun startListening(
+        onResult: (String) -> Unit,
+        onError: (VoiceRecognitionError) -> Unit,
+        onPartialResult: ((String) -> Unit)?,
+        onListeningStateChanged: ((Boolean) -> Unit)?
+    ) {
+        isStarted = true
+        isListening = true
+        onResultCallback = onResult
+        onErrorCallback = onError
+        onListeningStateChanged?.invoke(true)
+    }
+
+    override fun stopListening() {
+        isListening = false
+    }
+
+    override fun destroy() {
+        isDestroyed = true
+        isListening = false
+    }
+
+    fun emitResult(text: String) {
+        onResultCallback?.invoke(text)
+    }
+
+    fun emitError(error: VoiceRecognitionError) {
+        onErrorCallback?.invoke(error)
+    }
+}
+
+class VoiceInteractionManagerTest {
+
+    private lateinit var fakeStt: FakeSpeechRecognizerManager
+    private lateinit var intentRecognizer: IndonesianIntentRecognizer
+    private lateinit var fakeTts: FakeTextToSpeechManager
+    private lateinit var fakeHaptic: FakeHapticFeedbackManager
+    private lateinit var voiceManager: VoiceInteractionManager
+
+    @Before
+    fun setUp() {
+        fakeStt = FakeSpeechRecognizerManager()
+        intentRecognizer = IndonesianIntentRecognizer()
+        fakeTts = FakeTextToSpeechManager()
+        fakeHaptic = FakeHapticFeedbackManager()
+        voiceManager = VoiceInteractionManager(
+            speechRecognizerManager = fakeStt,
+            intentRecognizer = intentRecognizer,
+            ttsManager = fakeTts,
+            hapticManager = fakeHaptic
+        )
+    }
+
+    @Test
+    fun startListening_permissionDenied_setsErrorAndSpeaksWarning() {
+        voiceManager.startListening(hasRecordAudioPermission = false)
+
+        val state = voiceManager.state.value
+        assertEquals(VoiceSessionStatus.ERROR, state.status)
+        assertFalse(state.isListening)
+        assertEquals(1, fakeHaptic.errorCount)
+        assertTrue(fakeTts.spokenTexts.any { it.contains("Izin mikrofon belum diberikan", ignoreCase = true) })
+    }
+
+    @Test
+    fun startListening_permissionGranted_startsSTTAndSpeaksPrompt() {
+        voiceManager.startListening(hasRecordAudioPermission = true)
+
+        val state = voiceManager.state.value
+        assertEquals(VoiceSessionStatus.LISTENING, state.status)
+        assertTrue(state.isListening)
+        assertTrue(fakeStt.isStarted)
+        assertTrue(fakeTts.spokenTexts.any { it.contains("Mendengarkan", ignoreCase = true) })
+    }
+
+    @Test
+    fun processRecognizedSpeech_selectWork_triggersCallbackAndSuccess() {
+        var selectedOccasion: Occasion? = null
+        val callback = object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) {
+                selectedOccasion = occasion
+            }
+            override fun onOpenHistory() {}
+            override fun onOpenWardrobe() {}
+        }
+
+        voiceManager.processRecognizedSpeech("Mau pergi kerja kantor", callback)
+
+        val state = voiceManager.state.value
+        assertEquals(VoiceSessionStatus.SUCCESS, state.status)
+        assertEquals(Occasion.WORK, selectedOccasion)
+        assertEquals(1, fakeHaptic.successCount)
+        assertTrue(fakeTts.spokenTexts.any { it.contains("Kerja", ignoreCase = true) })
+    }
+
+    @Test
+    fun processRecognizedSpeech_openHistory_triggersHistoryCallback() {
+        var historyOpened = false
+        val callback = object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) {}
+            override fun onOpenHistory() { historyOpened = true }
+            override fun onOpenWardrobe() {}
+        }
+
+        voiceManager.processRecognizedSpeech("Tolong buka riwayat pakaian", callback)
+
+        assertTrue(historyOpened)
+        assertEquals(1, fakeHaptic.successCount)
+        assertTrue(fakeTts.spokenTexts.any { it.contains("riwayat", ignoreCase = true) })
+    }
+
+    @Test
+    fun processRecognizedSpeech_openWardrobe_triggersWardrobeCallback() {
+        var wardrobeOpened = false
+        val callback = object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) {}
+            override fun onOpenHistory() {}
+            override fun onOpenWardrobe() { wardrobeOpened = true }
+        }
+
+        voiceManager.processRecognizedSpeech("Buka lemari pakaian saya", callback)
+
+        assertTrue(wardrobeOpened)
+        assertEquals(1, fakeHaptic.successCount)
+        assertTrue(fakeTts.spokenTexts.any { it.contains("lemari", ignoreCase = true) })
+    }
+
+    @Test
+    fun processRecognizedSpeech_addClothingUsesExistingNavigationCallback() {
+        var formOpened = false
+        val callback = object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) {}
+            override fun onOpenHistory() {}
+            override fun onOpenWardrobe() {}
+            override fun onAddClothing() { formOpened = true }
+        }
+
+        voiceManager.processRecognizedSpeech("Tambahkan pakaian", callback)
+
+        assertTrue(formOpened)
+        assertEquals(1, fakeHaptic.successCount)
+    }
+
+    @Test
+    fun processRecognizedSpeech_cancelAction_stopsListening() {
+        voiceManager.processRecognizedSpeech("Batalkan aksi", null)
+
+        val state = voiceManager.state.value
+        assertEquals(VoiceSessionStatus.IDLE, state.status)
+        assertFalse(state.isListening)
+        assertTrue(fakeTts.spokenTexts.any { it.contains("dibatalkan", ignoreCase = true) })
+    }
+
+    @Test
+    fun processRecognizedSpeech_unknownPhrase_speaksClarificationAndErrorHaptic() {
+        voiceManager.processRecognizedSpeech("Robot jalan ke mars", null)
+
+        val state = voiceManager.state.value
+        assertEquals(VoiceSessionStatus.ERROR, state.status)
+        assertEquals(1, fakeHaptic.errorCount)
+        assertTrue(fakeTts.spokenTexts.any { it.contains("belum memahami", ignoreCase = true) })
+    }
+
+    @Test
+    fun emitError_speechTimeout_updatesStateAndSpeaksTimeoutMessage() {
+        voiceManager.startListening(hasRecordAudioPermission = true)
+        fakeStt.emitError(VoiceRecognitionError.SpeechTimeout)
+
+        val state = voiceManager.state.value
+        assertEquals(VoiceSessionStatus.ERROR, state.status)
+        assertEquals(1, fakeHaptic.errorCount)
+        assertTrue(fakeTts.spokenTexts.any { it.contains("Waktu bicara habis", ignoreCase = true) })
+    }
+
+    @Test
+    fun repeatResponse_afterStartListening_repeatsPreviousRealGuidanceNotListeningCue() {
+        val realGuidance = "Rekomendasi satu: Kemeja Biru dan Celana Hitam."
+        fakeTts.speak(realGuidance)
+
+        voiceManager.startListening(hasRecordAudioPermission = true)
+        fakeStt.emitResult("Ulangi")
+
+        assertEquals(realGuidance, fakeTts.lastSpeech)
+        assertEquals(realGuidance, fakeTts.spokenTexts.last())
+    }
+
+    @Test
+    fun cancelListening_preservesLastSpeechAndIgnoresStaleSessionCallbacks() {
+        val realGuidance = "Panduan Beranda Aura."
+        fakeTts.speak(realGuidance)
+        var selectedOccasion: Occasion? = null
+        val callback = object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) { selectedOccasion = occasion }
+            override fun onOpenHistory() {}
+            override fun onOpenWardrobe() {}
+        }
+
+        voiceManager.startListening(hasRecordAudioPermission = true, navigationCallback = callback)
+        voiceManager.cancelListening()
+        fakeStt.emitResult("Mau kerja")
+
+        assertEquals(null, selectedOccasion)
+        assertEquals(VoiceSessionStatus.IDLE, voiceManager.state.value.status)
+        assertEquals(realGuidance, fakeTts.lastSpeech)
+    }
+
+    @Test
+    fun processRecognizedSpeech_extendedNavigationCommands_triggerAllCallbacks() {
+        var homeOpened = false
+        var backed = false
+        var continued = false
+        var nextRec = false
+        var currentSelected = false
+
+        val callback = object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) {}
+            override fun onOpenHistory() {}
+            override fun onOpenWardrobe() {}
+            override fun onOpenHome() { homeOpened = true }
+            override fun onNavigateBack() { backed = true }
+            override fun onContinueRecommendation() { continued = true }
+            override fun onNextRecommendation() { nextRec = true }
+            override fun onSelectCurrentRecommendation() { currentSelected = true }
+        }
+
+        voiceManager.processRecognizedSpeech("Buka beranda", callback)
+        voiceManager.processRecognizedSpeech("Kembali", callback)
+        voiceManager.processRecognizedSpeech("Lanjutkan", callback)
+        voiceManager.processRecognizedSpeech("Rekomendasi berikutnya", callback)
+        voiceManager.processRecognizedSpeech("Pilih pakaian ini", callback)
+
+        assertTrue(homeOpened)
+        assertTrue(backed)
+        assertTrue(continued)
+        assertTrue(nextRec)
+        assertTrue(currentSelected)
+    }
+
+    @Test
+    fun contextualUnknownPromptAndCategoryToggle_reflectActiveScreenInsteadOfHomeDefault() {
+        var toggledCategory: com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory? = null
+        val manager = VoiceInteractionManager(
+            speechRecognizerManager = fakeStt,
+            ttsManager = fakeTts,
+            intentRecognizer = intentRecognizer,
+            hapticManager = fakeHaptic,
+            contextProvider = {
+                VoiceScreenContext(page = VoicePage.PICK_CATEGORY)
+            }
+        )
+        val callback = object : VoiceNavigationCallback {
+            override fun onSelectOccasion(occasion: Occasion) {}
+            override fun onOpenHistory() {}
+            override fun onOpenWardrobe() {}
+            override fun onToggleOutfitCategory(
+                category: com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory,
+                selected: Boolean?
+            ) {
+                toggledCategory = category
+            }
+        }
+
+        manager.processRecognizedSpeech("Tambahkan luaran", callback)
+        assertEquals(
+            com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory.OUTER_WEAR,
+            toggledCategory
+        )
+
+        manager.processRecognizedSpeech("Perintah acak tidak dikenal", callback)
+        val hint = fakeTts.spokenTexts.lastOrNull().orEmpty()
+        assertTrue(hint.contains("kategori", ignoreCase = true))
+        assertTrue(hint.contains("Lanjutkan", ignoreCase = true))
+        assertEquals(hint, manager.state.value.feedbackMessage)
+    }
+}

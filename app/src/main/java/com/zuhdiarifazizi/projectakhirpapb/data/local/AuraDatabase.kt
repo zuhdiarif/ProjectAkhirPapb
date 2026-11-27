@@ -11,16 +11,14 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     entities = [
         ClothingEntity::class,
         AppMetadataEntity::class,
-        UserEntity::class,
         OutfitHistoryEntity::class
     ],
-    version = 3,
+    version = 4,
     exportSchema = true
 )
 abstract class AuraDatabase : RoomDatabase() {
     abstract fun clothingDao(): ClothingDao
     abstract fun appMetadataDao(): AppMetadataDao
-    abstract fun userDao(): UserDao
     abstract fun outfitHistoryDao(): OutfitHistoryDao
 
     companion object {
@@ -72,13 +70,21 @@ abstract class AuraDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS `users`")
+                db.execSQL("DELETE FROM `app_metadata` WHERE `key` = 'active_user_id'")
+            }
+        }
+
         fun getInstance(context: Context): AuraDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(
                 context.applicationContext,
                 AuraDatabase::class.java,
                 "aura_local.db"
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .fallbackToDestructiveMigrationOnDowngrade(dropAllTables = true)
                 .build()
                 .also { instance = it }
         }

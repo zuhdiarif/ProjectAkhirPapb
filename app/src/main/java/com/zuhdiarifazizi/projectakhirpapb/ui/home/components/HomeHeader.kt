@@ -26,7 +26,7 @@ import com.zuhdiarifazizi.projectakhirpapb.ui.theme.AuraTextSecondary
 
 @Composable
 fun HomeHeader(
-    onProfileClick: () -> Unit = {},
+    onOpenOnboarding: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -66,19 +66,19 @@ fun HomeHeader(
         }
 
         IconButton(
-            onClick = onProfileClick,
+            onClick = onOpenOnboarding,
             modifier = Modifier
                 .size(48.dp)
                 .semantics {
-                    contentDescription = "Profil pengguna"
+                    contentDescription = "Panduan aplikasi Aura"
                     role = Role.Button
                 }
         ) {
             Icon(
-                painter = painterResource(id = R.drawable.ic_profile),
-                contentDescription = null, // provided via semantics
+                painter = painterResource(id = R.drawable.ic_info),
+                contentDescription = null,
                 tint = AuraNavy,
-                modifier = Modifier.size(28.dp)
+                modifier = Modifier.size(26.dp)
             )
         }
     }

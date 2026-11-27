@@ -3,17 +3,17 @@ package com.zuhdiarifazizi.projectakhirpapb.ui.manageclothes
 import app.cash.turbine.test
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.DemoClothingCatalog
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.InMemoryClothesRepository
-import com.zuhdiarifazizi.projectakhirpapb.data.storage.ClothingPhotoStorage
-import com.zuhdiarifazizi.projectakhirpapb.domain.classifier.ClassificationResult
-import com.zuhdiarifazizi.projectakhirpapb.domain.classifier.ClothingClassifier
+import com.zuhdiarifazizi.projectakhirpapb.data.device.ClothingPhotoStorage
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClassificationResult
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.ClothingClassifier
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingPattern
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.HsvColor
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
-import com.zuhdiarifazizi.projectakhirpapb.domain.nfc.NfcTagReader
-import com.zuhdiarifazizi.projectakhirpapb.domain.scanner.ScannerFrameGuidance
-import com.zuhdiarifazizi.projectakhirpapb.domain.scanner.ScannerHapticCue
-import com.zuhdiarifazizi.projectakhirpapb.domain.scanner.ScannerReadiness
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.NfcTagReader
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ScannerFrameGuidance
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ScannerHapticCue
+import com.zuhdiarifazizi.projectakhirpapb.domain.model.ScannerReadiness
 import com.zuhdiarifazizi.projectakhirpapb.ui.home.FakeHapticFeedbackManager
 import com.zuhdiarifazizi.projectakhirpapb.ui.home.FakeTextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.util.MainDispatcherRule
@@ -218,6 +218,26 @@ class ManageClothesViewModelUnitTest {
 
         assertEquals(DemoClothingCatalog.items.size - 1, viewModel.uiState.value.items.size)
         assertFalse(viewModel.uiState.value.items.any { it.id == target.id })
+    }
+
+    @Test
+    fun rfidAddFlowAndVoiceItemAction_openFormWithBoundTagAndInspectItemByNumber() = runTest {
+        viewModel.openRfidAddFlow()
+        assertEquals(ManageClothesPage.RFID_ADD, viewModel.uiState.value.page)
+
+        viewModel.simulateNewRfidAdd()
+        assertEquals(ManageClothesPage.FORM, viewModel.uiState.value.page)
+        assertTrue(viewModel.uiState.value.form.rfidTagUid.orEmpty().isNotBlank())
+
+        viewModel.returnToList()
+        val firstName = viewModel.uiState.value.items.first().name
+        viewModel.performVoiceItemAction(
+            com.zuhdiarifazizi.projectakhirpapb.domain.model.ItemVoiceAction.DETAIL,
+            oneBasedNumber = 1,
+            nameQuery = null
+        )
+        assertEquals(ManageClothesPage.DETAIL, viewModel.uiState.value.page)
+        assertEquals(firstName, viewModel.uiState.value.selectedItem?.name)
     }
 
     private class FakeNfcTagReader : NfcTagReader {

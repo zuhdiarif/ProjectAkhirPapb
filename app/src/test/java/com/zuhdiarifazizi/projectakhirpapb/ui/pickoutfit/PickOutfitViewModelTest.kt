@@ -71,4 +71,35 @@ class PickOutfitViewModelTest {
         assertEquals(Occasion.EXERCISE, savedHistory.first().occasion)
         assertTrue(tts.lastSpeech.orEmpty().contains("disimpan ke Riwayat", ignoreCase = true))
     }
+
+    @Test
+    fun contextualVoiceActions_toggleCategoriesAndPickNumberedRecommendation() = runTest {
+        viewModel.beginSelection(Occasion.WORK)
+        viewModel.toggleCategoryByVoice(
+            com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory.OUTER_WEAR,
+            selected = true
+        )
+        assertTrue(
+            com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory.OUTER_WEAR in
+                viewModel.uiState.value.selectedCategories
+        )
+
+        viewModel.selectAllCategoriesByVoice()
+        assertEquals(
+            com.zuhdiarifazizi.projectakhirpapb.domain.model.ClothingCategory.entries.size,
+            viewModel.uiState.value.selectedCategories.size
+        )
+
+        assertTrue(viewModel.generateRecommendations())
+        viewModel.nextRecommendation()
+        assertEquals(1, viewModel.uiState.value.currentCandidateIndex)
+        viewModel.previousRecommendation()
+        assertEquals(0, viewModel.uiState.value.currentCandidateIndex)
+
+        assertTrue(viewModel.viewRecommendationDetailsByVoice(1))
+        assertEquals(1, viewModel.uiState.value.currentCandidateIndex)
+
+        assertTrue(viewModel.selectNumberedRecommendationByVoice(1))
+        assertTrue(viewModel.uiState.value.isSavedToHistory)
+    }
 }

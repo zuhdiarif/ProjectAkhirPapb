@@ -1,8 +1,8 @@
 package com.zuhdiarifazizi.projectakhirpapb.ui.home
 
 import com.zuhdiarifazizi.projectakhirpapb.data.repository.DefaultActivityCategoryRepository
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.HapticFeedbackManager
-import com.zuhdiarifazizi.projectakhirpapb.domain.feedback.TextToSpeechManager
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.HapticFeedbackManager
+import com.zuhdiarifazizi.projectakhirpapb.domain.repository.TextToSpeechManager
 import com.zuhdiarifazizi.projectakhirpapb.domain.model.Occasion
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -40,7 +40,7 @@ class FakeTextToSpeechManager : TextToSpeechManager {
 
     override fun speakCue(text: String, onComplete: () -> Unit) {
         cueTexts.add(text)
-        speak(text, queueMode = android.speech.tts.TextToSpeech.QUEUE_FLUSH, recordInHistory = false)
+        speak(text, queueMode = TextToSpeechManager.QUEUE_FLUSH, recordInHistory = false)
         onComplete()
     }
 
@@ -143,9 +143,9 @@ class HomeViewModelTest {
 
     @Test
     fun homeViewModel_withVoiceInteractionManager_triggersVoiceWorkflow() {
-        val fakeStt = com.zuhdiarifazizi.projectakhirpapb.domain.voice.FakeSpeechRecognizerManager()
-        val intentRecognizer = com.zuhdiarifazizi.projectakhirpapb.data.voice.IndonesianIntentRecognizer()
-        val voiceManager = com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceInteractionManager(
+        val fakeStt = com.zuhdiarifazizi.projectakhirpapb.ui.voice.FakeSpeechRecognizerManager()
+        val intentRecognizer = com.zuhdiarifazizi.projectakhirpapb.data.device.IndonesianIntentRecognizer()
+        val voiceManager = com.zuhdiarifazizi.projectakhirpapb.ui.voice.VoiceInteractionManager(
             speechRecognizerManager = fakeStt,
             intentRecognizer = intentRecognizer,
             ttsManager = fakeTts,
@@ -161,7 +161,7 @@ class HomeViewModelTest {
         )
 
         var selectedOccasion: Occasion? = null
-        val callback = object : com.zuhdiarifazizi.projectakhirpapb.domain.voice.VoiceNavigationCallback {
+        val callback = object : com.zuhdiarifazizi.projectakhirpapb.ui.voice.VoiceNavigationCallback {
             override fun onSelectOccasion(occasion: Occasion) {
                 selectedOccasion = occasion
             }
