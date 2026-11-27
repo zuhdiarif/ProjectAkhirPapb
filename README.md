@@ -1,6 +1,6 @@
 # AURA — Project Akhir PAPB TIF - F
 
-Aplikasi Android berbasis **Kotlin + Jetpack Compose** untuk membantu penyandang tunanetra dalam mengelola lemari pakaian digital, mendapatkan rekomendasi kombinasi outfit sesuai acara dan harmoni warna, memantau riwayat serta rotasi pemakaian, dan mengoperasikan aplikasi melalui interaksi suara (*hands-free*).
+Aplikasi Android berbasis **Kotlin + Jetpack Compose** untuk membantu penyandang **tunanetra** dan **buta warna** dalam mengelola lemari pakaian digital (Video Kamera AI, Scan RFID 13,56 MHz, dan Form Manual), mendapatkan rekomendasi kombinasi outfit menggunakan AI offline **Project Harmony (LiteRT)**, memantau riwayat serta rotasi pemakaian 30 hari, dan mengoperasikan seluruh layar aplikasi melalui interaksi suara (*hands-free*).
 
 ---
 
@@ -23,45 +23,55 @@ Aplikasi Android berbasis **Kotlin + Jetpack Compose** untuk membantu penyandang
 
 ---
 
-## Panduan Arsitektur Proyek (MVVM Layer-First)
+## Panduan Arsitektur Proyek (Clean MVVM 3-Layer)
 
-Seluruh source code ditempatkan di dalam `com.zuhdiarifazizi.projectakhirpapb` dengan struktur **MVVM** yang terbagi menjadi 3 layer utama:
+Seluruh source code ditempatkan di dalam `com.zuhdiarifazizi.projectakhirpapb` mengikuti **3-Layer Clean Architecture + MVVM** dengan arah ketergantungan searah ke dalam:
+
+> **Aturan Dependensi:** `UI Layer → Domain Layer ← Data Layer`  
+> • Package `domain/` 100% Kotlin murni (0 import `android.*`, `androidx.*`, `data.*`, atau `ui.*`).  
+> • Package `ui/` hanya berkomunikasi dengan `ViewModel`, `UiState`, dan kontrak di `domain/` (0 import `data.*`).  
+> • Perakitan seluruh implementasi (*Manual Dependency Injection*) dilakukan di satu titik yaitu `AuraApp.kt`.
 
 ```text
 app/src/main/java/com/zuhdiarifazizi/projectakhirpapb/
-├── domain/                 # Aturan bisnis murni & kontrak data
-│   ├── model/              # Model data bersama (User, ClothingItem, HsvColor, OutfitCandidate, OutfitHistory, VoiceIntent)
-│   ├── classifier/         # Interface ClothingClassifier & ClassificationResult
-│   ├── repository/         # Interface AuthRepository, ClothesRepository, OutfitRepository
-│   └── usecase/            # Logika utama (CalculateOutfitScore, AnalyzeOutfitRotation, RecognizeVoiceIntent)
-├── data/                   # Implementasi sumber data & layanan pemrosesan
-│   ├── classifier/         # DefaultClothingClassifier & HsvColorExtractor
-│   └── repository/         # Implementasi Repository (Auth, Clothes, Outfit)
-├── ui/                     # Tampilan Compose & State Management per fitur
-│   ├── auth/               # Login & Registrasi (AuthScreen, AuthViewModel, AuthUiState)
-│   ├── manageclothes/      # Modul Manage Clothes (ManageClothesScreen, ManageClothesViewModel, ManageClothesUiState)
-│   ├── pickoutfit/         # Modul Pick Outfit (PickOutfitScreen, PickOutfitViewModel, PickOutfitUiState)
-│   ├── history/            # Modul History & Rotasi (HistoryScreen, HistoryViewModel, HistoryUiState)
-│   ├── voice/              # State & controller Voice Interaction (VoiceViewModel, VoiceInteractionState)
-│   ├── navigation/         # Daftar rute halaman (AuraDestination)
-│   └── theme/              # Design tokens (Color, Type, Theme)
-└── MainActivity.kt         # Entry point dan shell navigasi aplikasi
+├── MainActivity.kt               # Entry point Activity tipis (19 baris, memanggil AuraApp())
+├── AuraApp.kt                    # Composition Root, Manual DI, Lifecycle NFC/Sensor & Scaffold
+├── domain/                       # Business Logic & Kontrak Murni (Pure Kotlin)
+│   ├── model/                    # Model bersama (ClothingItem, HsvColor, HarmonyPrediction, OutfitCandidate, OutfitHistory, ScannerGuidance, VoiceCommand)
+│   ├── repository/               # Interface kontrak (ClothesRepository, OutfitRepository, OnboardingRepository, ClothingClassifier, ProjectHarmonyScorer, NfcTagReader, TextToSpeechManager, SpeechRecognizerManager, IntentRecognizer, PhotoStorageRepository, ActivityCategoryRepository)
+│   └── usecase/                  # Logika stateless (CalculateOutfitScoreUseCase, AnalyzeOutfitRotationUseCase, MatchClothingFromWardrobeUseCase, GarmentFrameAnalyzer, RecognizeVoiceIntentUseCase, SecurityInputValidator)
+├── data/                         # Implementasi Persistensi, AI Engine & Perangkat Keras
+│   ├── local/                    # Room SQLite v4 (AuraDatabase + MIGRATION_1_2..3_4, DAO, Entity, OutfitHistoryCodec)
+│   ├── remote/                   # Gemini Vision HTTPS API + HsvColorExtractor (fallback offline otomatis)
+│   ├── harmony/                  # Google LiteRT Engine (project_harmony.tflite GPU/CPU) + KotlinProjectHarmonyScorer fallback
+│   ├── device/                   # AndroidTextToSpeechManager, AndroidSpeechRecognizerManager, IndonesianIntentRecognizer, AndroidNfcTagReader, AndroidHapticFeedbackManager, CameraXGarmentAnalyzer, DeviceTiltMonitor, ClothingPhotoStorage
+│   └── repository/               # Implementasi Room & InMemory + DemoClothingCatalog (22 pakaian awal)
+└── ui/                           # Stateless Jetpack Compose Screens & ViewModels
+    ├── onboarding/               # Onboarding 3 slide beranimasi persisten tanpa login (Screen, ViewModel, UiState)
+    ├── home/                     # Beranda 5 aktivitas & tombol suara/panduan (HomeScreen, HomeViewModel, components/)
+    ├── pickoutfit/               # Rekomendasi outfit & hasil Project Harmony (PickOutfitScreen, PickOutfitViewModel, UiState)
+    ├── history/                  # Statistik 30 hari & rekomendasi rotasi (HistoryScreen, HistoryViewModel, UiState)
+    ├── manageclothes/            # Daftar lemari, 3 Opsi Tambah Baju, CameraX AI, RfidAddScreen, Form & Detail
+    ├── voice/                    # VoiceViewModel, VoiceInteractionManager & AuraVoiceRouter (15 VoicePage kontekstual)
+    ├── components/               # Komponen aksesibel reusable (AuraButton, AuraSpeakingBanner, ClothingImage, FeedbackBanner)
+    ├── navigation/               # Enum destinasi utama (AuraDestination)
+    └── theme/                    # Design tokens kontras tinggi (Color, Type, Spacing, Theme)
 ```
 
 ### Peta Pengerjaan per Fitur
 
 | Fitur | Layer Domain (`domain/`) | Layer Data (`data/`) | Layer UI (`ui/`) |
 | :--- | :--- | :--- | :--- |
-| **Auth (Shared)** | `User`, `AuthRepository` | `InMemoryAuthRepository` *(atau implementasi persistence final)* | `ui/auth/*` |
-| **Fungsi 1: Pick Outfit** | `OutfitCandidate`, `CalculateOutfitScoreUseCase` | `OutfitRepository` | `ui/pickoutfit/*` |
-| **Fungsi 2: History & Rotasi** | `OutfitHistory`, `AnalyzeOutfitRotationUseCase` | `OutfitRepository` | `ui/history/*` |
-| **Fungsi 3: Manage Clothes** | `ClothingItem`, `HsvColor`, `ClothingClassifier`, `ClothesRepository` | `HsvColorExtractor`, `DefaultClothingClassifier`, `ClothesRepository` | `ui/manageclothes/*` |
-| **Fungsi 4: Voice System** | `VoiceIntent`, `RecognizeVoiceIntentUseCase` | Layanan input/output suara & haptic | `ui/voice/*` & integrasi navigasi |
+| **Onboarding & Beranda** | `OnboardingRepository`, `ActivityCategoryRepository` | `RoomOnboardingRepository`, `DefaultActivityCategoryRepository` | `ui/onboarding/*`, `ui/home/*` |
+| **Fungsi 1: Pick Outfit & Project Harmony** | `OutfitCandidate`, `HarmonyPrediction`, `ProjectHarmonyScorer`, `CalculateOutfitScoreUseCase` | `LiteRtHarmonyEngine`, `AndroidProjectHarmonyScorer`, `RoomOutfitRepository` | `ui/pickoutfit/*` |
+| **Fungsi 2: History & Rotasi 30 Hari** | `OutfitHistory`, `AnalyzeOutfitRotationUseCase` | `OutfitHistoryDao`, `OutfitHistoryCodec`, `RoomOutfitRepository` | `ui/history/*` |
+| **Fungsi 3: Manage Clothes (Video AI, RFID & Manual)** | `ClothingItem`, `HsvColor`, `ClothingClassifier`, `NfcTagReader`, `GarmentFrameAnalyzer`, `MatchClothingFromWardrobeUseCase` | `AuraDatabase`, `RoomClothesRepository`, `GeminiVisionClothingClassifier`, `HsvColorExtractor`, `AndroidNfcTagReader`, `CameraXGarmentAnalyzer`, `DeviceTiltMonitor`, `ClothingPhotoStorage` | `ui/manageclothes/*` |
+| **Fungsi 4: Voice System Kontekstual (15 Layar)** | `VoiceCommand`, `VoiceScreenContext`, `IntentRecognizer`, `SpeechRecognizerManager`, `TextToSpeechManager`, `RecognizeVoiceIntentUseCase` | `IndonesianIntentRecognizer`, `AndroidSpeechRecognizerManager`, `AndroidTextToSpeechManager`, `AndroidHapticFeedbackManager` | `ui/voice/*` (`VoiceViewModel`, `AuraVoiceRouter`) |
 
 ### Aturan Pengerjaan MVVM (Supaya Tidak Bentrok)
-- **UI hanya komunikasi dengan `ViewModel` & `UiState`:** Jangan panggil repository, kamera, atau logika perhitungan langsung dari fungsi `@Composable`.
-- **Gunakan interface di `domain/repository/`:** Jika butuh data pakaian atau riwayat, panggil lewat `ClothesRepository` / `OutfitRepository`.
-- **Diskusi dulu sebelum ubah file bersama:** `domain/model/*`, `domain/repository/*`, `MainActivity.kt`, dan `gradle/libs.versions.toml` dipakai semua anggota.
+- **UI hanya komunikasi dengan `ViewModel` & `UiState`:** Jangan panggil repository, database, kamera, atau logika perhitungan langsung dari fungsi `@Composable` dan jangan impor `data.*` dari layer `ui/`.
+- **Gunakan interface di `domain/repository/`:** Akses data atau hardware melalui interface kontraknya lalu rakit implementasi konkretnya secara terpusat di `AuraApp.kt` (Manual DI Root), menjaga `MainActivity.kt` tetap ringkas.
+- **Diskusi dulu sebelum ubah file bersama:** `domain/model/*`, `domain/repository/*`, `AuraApp.kt`, `MainActivity.kt`, dan `gradle/libs.versions.toml` dipakai semua anggota.
 
 ---
 
@@ -170,4 +180,5 @@ git checkout -b feat/nama-fitur-baru
 ## Catatan Konfigurasi Lokal
 
 - File `local.properties` otomatis diabaikan oleh `.gitignore` dan akan dibuat oleh Android Studio sesuai lokasi Android SDK di masing-masing laptop.
-- Izin perangkat yang sudah disiapkan di `AndroidManifest.xml`: `CAMERA`, `RECORD_AUDIO`, dan `VIBRATE`.
+- *(Opsional)* Tambahkan `GEMINI_API_KEY=<kunci-anda>` di `local.properties` untuk mengaktifkan klasifikasi foto cloud Gemini Vision via `BuildConfig.GEMINI_API_KEY`. Jika kosong atau perangkat offline, aplikasi otomatis menggunakan ekstraksi warna HSV lokal dan model `project_harmony.tflite` secara penuh (*offline-first*). **Jangan pernah** menuliskan API key asli ke file yang dilacak Git.
+- Izin perangkat yang dideklarasikan di `AndroidManifest.xml`: `CAMERA`, `RECORD_AUDIO`, `VIBRATE`, `INTERNET`, dan `NFC` (fitur `camera` & `nfc` bertanda `required="false"` agar perangkat tanpa NFC tetap dapat menjalankan mode simulasi demo & galeri).
